@@ -81,7 +81,7 @@
   .bank-iban { font-size: 12px; font-weight: bold; color: #111; letter-spacing: 0.5px; }
 
   /* CSS Watermark Overlay */
-  .watermark-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 0; overflow: hidden; }
+  .watermark-container { absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 0; overflow: hidden; }
   .watermark-text { font-family: Arial, sans-serif; font-size: 55px; font-weight: 900; color: rgba(192, 57, 43, 0.035); text-transform: uppercase; transform: rotate(-35deg); white-space: nowrap; letter-spacing: 5px; }
 
   @media print {
@@ -228,7 +228,9 @@
 
 // Hardcoded new live Google Apps Script web app URL as default
 const DB_URL = "https://script.google.com/macros/s/AKfycbZDZ8PGlml7UWpLfLh3ccbyhzkZ2_GqnxGfCYELkyLmmZItxVY_vpjmkTOSmQHXfDmDA/exec";
-const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1OympSCR6CIcQ0re9kdGRf3noTUfSw2Tgvm-oPRoHD10/export?format=csv";
+
+// CORRECTED: Pointing directly to the Item_Library tab in your spreadsheet
+const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1OympSCR6CIcQ0re9kdGRf3noTUfSw2Tgvm-oPRoHD10/gviz/tq?tqx=out:csv&sheet=Item_Library";
 
 let parsedLibrary = {};
 let hasEstimatorBeenRun = false;
@@ -1431,7 +1433,7 @@ function generateQuotation() {
             
             <div class="bank-card">
               <div>
-                <strong>3) CEO Account — Mashreq Bank</strong>
+                <strong>3) Company Account — Mashreq Bank</strong>
                 Account Title: Ahmad Latif
                 <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1009 20602 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
               </div>
