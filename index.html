@@ -105,13 +105,6 @@
 </head>
 <body>
 
-<div class="app-header">
-  <div>
-    <h1>🏢 Ahmad Aluminium & Glass Cont</h1>
-    <span>#1 Aluminium & Glass Cont UAE — Quotation Generator</span>
-  </div>
-</div>
-
 <div class="container">
   <!-- FORM PANEL -->
   <div class="form-panel" id="formPanel">
@@ -233,8 +226,8 @@
 
 <script>
 
-// Fixed Deployed Apps Script URL & Public Spreadsheet CSV export link
-const DB_URL = "https://script.google.com/macros/s/AKfycbz7vTFZevifbAMfMHH7XxG7cI3Zgv_uCnLgK1DKfdhCQ3LF__JC4HIH8wvTH5BKhL59Uw/exec";
+// Hardcoded new live Google Apps Script web app URL as default
+const DB_URL = "https://script.google.com/macros/s/AKfycbZDZ8PGlml7UWpLfLh3ccbyhzkZ2_GqnxGfCYELkyLmmZItxVY_vpjmkTOSmQHXfDmDA/exec";
 const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1OympSCR6CIcQ0re9kdGRf3noTUfSw2Tgvm-oPRoHD10/export?format=csv";
 
 let parsedLibrary = {};
@@ -434,9 +427,6 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
   const div = document.createElement('div');
   div.className = 'item-row';
   div.id = 'item_' + id;
-
-  const options = ['-- Select Item --', ...Object.keys(ITEM_LIBRARY), 'Custom'];
-  const optionsHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
 
   div.innerHTML = `
     <h4>Item #${id}</h4>
@@ -1077,7 +1067,7 @@ function generateQuotation() {
         <img src="Ahmad_Aluminium_Logo.png" alt="Ahmad Aluminium" onerror="this.style.display='none'; document.getElementById('fallbackBranding').style.display='block';" style="max-height:85px; width:auto;">
         <div id="fallbackBranding" style="display:none;">
           <div style="background:#c0392b; color:white; padding:10px 14px; font-size:24px; font-weight:900; letter-spacing:2px; border-radius:4px;">AHMAD</div>
-          <div style="font-size:16px; font-weight:900; color:#c0392b; letter-spacing:1px;">ALUMINIUM & GLASS CONT</div>
+          <div style="font-size:16px;font-weight:900;color:#c0392b;letter-spacing:1px;">ALUMINIUM & GLASS CONT</div>
         </div>
         <div style="margin-left: 5px;">
           <div style="font-size:12px; font-weight:900; color:#111; letter-spacing:1px;">#1 ALUMINIUM & GLASS CONT UAE</div>
@@ -1212,10 +1202,38 @@ function generateQuotation() {
           ${schematicHTML}
         </div>
 
+        <!-- Overlapping stamp and signature setup -->
         <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:40px;">
-          <div style="text-align:right; font-size:13px;">
-            <div style="font-weight:bold; margin-bottom:15px;">SIGNATURE:</div>
-            <div style="font-family:cursive; font-size:24px; border-bottom:1px solid #333; display:inline-block; padding:0 30px 4px;">Ahmad</div>
+          <div style="position:relative; width:220px; height:100px; text-align:right;">
+            <div style="font-size:12px; font-weight:bold; position:absolute; top:0; right:100px; z-index:2;">SIGNATURE:</div>
+            <div style="font-family:cursive; font-size:24px; position:absolute; bottom:15px; right:10px; border-bottom:1px solid #333; padding:0 30px 4px; display:inline-block; z-index:2;">Ahmad</div>
+            
+            <!-- SVG Stamp floating over/next to signature -->
+            <div style="position:absolute; bottom:0; left:0; z-index:1; opacity:0.85; transform:rotate(-10deg);">
+              <svg viewBox="0 0 200 200" width="105" height="105">
+                <circle cx="100" cy="100" r="95" fill="none" stroke="#1d125f" stroke-width="3" />
+                <circle cx="100" cy="100" r="90" fill="none" stroke="#1d125f" stroke-width="1" />
+                <circle cx="100" cy="100" r="62" fill="none" stroke="#1d125f" stroke-width="1" />
+                <circle cx="100" cy="100" r="57" fill="none" stroke="#1d125f" stroke-width="2.5" />
+                <path id="topPathInvoice" d="M 25,100 A 75,75 0 0,1 175,100" fill="none" stroke="none" />
+                <path id="bottomPathInvoice" d="M 175,100 A 75,75 0 0,1 25,100" fill="none" stroke="none" />
+                <text fill="#1d125f" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="8" letter-spacing="0.3">
+                  <textPath href="#topPathInvoice" startOffset="50%" text-anchor="middle">
+                    احمد الالمنيوم اند جلاس كونتراكتور ش.ذ.م.م - منطقة حرة
+                  </textPath>
+                </text>
+                <text fill="#1d125f" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="7.2" letter-spacing="0.3">
+                  <textPath href="#bottomPathInvoice" startOffset="50%" text-anchor="middle">
+                    AHMAD ALUMINIUM AND GLASS CONTRACTOR L.L.C-FZ
+                  </textPath>
+                </text>
+                <text x="20" y="104" fill="#1d125f" font-size="12" font-weight="bold">★</text>
+                <text x="169" y="104" fill="#1d125f" font-size="12" font-weight="bold">★</text>
+                <text x="100" y="108" fill="#1d125f" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="13" text-anchor="middle" letter-spacing="0.5">
+                  DUBAI - U.A.E
+                </text>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
@@ -1389,7 +1407,7 @@ function generateQuotation() {
           </div>
         </div>
 
-        <!-- BANK DETAILS (Stacked vertically with clean layout as requested) -->
+        <!-- BANK DETAILS -->
         <div style="border-top:2px solid #c0392b; padding-top:15px;">
           <h3 style="color:#c0392b; font-size:14px; font-weight:bold; text-align:center; margin-bottom:12px; text-transform:uppercase; letter-spacing:2px;">Company Bank Account Details</h3>
           <div class="bank-grid-vertical">
