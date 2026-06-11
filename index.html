@@ -86,7 +86,7 @@
   @media print {
     @page {
       size: A4;
-      margin: 0 !important; /* Force browser to strip header text and URL filepaths */
+      margin: 0 !important; /* Strips browser headers and footers from printing layout */
     }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .app-header, .form-panel, .preview-toolbar, .page-break-divider { display: none !important; }
@@ -97,8 +97,8 @@
       border: none !important;
       width: 100% !important;
       height: auto !important;
-      min-height: 297mm !important; /* Ensure full A4 scale */
-      padding: 20mm 15mm 15mm 15mm !important; /* Generous internal margin to prevent content cut-off */
+      min-height: 297mm !important; /* Scale to fit A4 */
+      padding: 20mm 15mm 15mm 15mm !important; /* Protect edge alignments */
       margin: 0 !important;
       page-break-after: always !important;
     }
@@ -109,6 +109,7 @@
 </head>
 <body>
 
+<!-- Suggestions dropdown linked to line inputs -->
 <datalist id="itemNamesDatalist"></datalist>
 
 <div class="app-header">
@@ -195,16 +196,6 @@
       </select>
     </div>
 
-    <!-- INVOICE NOTES & PRESETS -->
-    <div class="form-group" style="background: rgba(231, 76, 60, 0.08); padding: 12px; border-radius: 6px; border: 1px solid rgba(231, 76, 60, 0.25);">
-      <label style="color: #ffb4a2; font-weight: bold; font-size: 11px;">📝 Terms & Notes Preset</label>
-      <select id="notesPreset" onchange="onNotesPresetChange(this.value)" style="margin-bottom: 6px;">
-        <option value="fixed">Standard Terms & Conditions (Default)</option>
-        <option value="custom">Custom Notes (Type below)</option>
-      </select>
-      <textarea id="customNotesText" rows="4" style="background: #0f3460; font-size: 11px;" placeholder="Customize invoice notes & terms of service..."></textarea>
-    </div>
-
     <!-- PARAMETRIC SMART ESTIMATOR PANEL (In Centimeters) -->
     <div class="form-group" style="background: rgba(22, 160, 133, 0.15); padding: 12px; border-radius: 6px; border: 1px solid #1abc9c; margin-top: 15px; margin-bottom: 15px;">
       <label style="color: #1abc9c; font-weight: bold; font-size: 11px; margin-bottom: 8px; display: block; letter-spacing: 1px;">📐 Smart Room Estimator (In Centimeters)</label>
@@ -249,7 +240,7 @@
 
 <script>
 
-// Database API endpoints & direct dynamic CSV export for Google Sheets
+// Database API targets
 const DB_URL = "https://script.google.com/macros/s/AKfycbz7vTFZevifbAMfMHH7XxG7cI3Zgv_uCnLgK1DKfdhCQ3LF__JC4HIH8wvTH5BKhL59Uw/exec";
 const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNizzL9Im6qMmjEcuOhH5404-GMIJDXqSuGw3xrZQARxk1sJhTIkVqT8C2AwvchDHbysmB-oftQ3Sk/pub?output=csv";
 
@@ -259,13 +250,13 @@ let flatItemLibrary = {};
 
 // ─── OFFLINE BACKUP LIBRARY ────────────────────────────────────────────────
 const ITEM_LIBRARY = {
-  'Structure': { desc: 'Supply & installation of Jotun powder coated 100mm × 100mm, 2mm thick aluminium tube frame for roof and pillars.', rate: 1200, isFixed: false },
-  'Swing Door': { desc: 'Supply & installation of Jotun powder coated 4.5cm aluminium frame swing door with double glass (6mm tempered clear + 12mm air spacer + 6mm tempered clear glass).', rate: 2500, isFixed: true },
-  '3 Side Closing with Cement Board & Gypsum': { desc: 'Supply & installation of outside cement board, inside gypsum board with GI channel, wall construction and white paint finishing.', rate: 400, isFixed: false },
-  'Sandwich Panel Roof': { desc: 'Supply & installation of 9cm thick sandwich panel roof with sheets on both sides and insulation foam inside, 10cm slope for drainage, 100% waterproofing.', rate: 450, isFixed: false },
-  'Gypsum Ceiling': { desc: 'Supply & installation of GI channel frame for gypsum board ceiling with white paint finishing.', rate: 120, isFixed: false },
-  'Electric': { desc: 'Supply & installation of spot lights in gypsum board ceiling and power sockets as required.', rate: 1500, isFixed: true },
-  'AC': { desc: 'Supply & installation of 1.5 Ton Samsung or Super General AC with up to 3m copper pipe connection and power supply installation.', rate: 3500, isFixed: true }
+  'Structure': { desc: 'Supply & installation of Juton powder coated 100mm × 100mm, 2mm thick aluminium tube frame for roof and pillars.', rate: 1200, formula: 'W*L' },
+  'Swing Door': { desc: 'Supply & installation of Juton powder coated 4.5cm aluminium frame swing door with double glass (6mm tempered clear + 12mm air spacer + 6mm tempered clear glass).', rate: 2500, formula: 'fixed' },
+  '3 Side Closing with Cement Board & Gypsum': { desc: 'Supply & installation of outside cement board, inside gypsum board with GI channel, wall construction and white paint finishing.', rate: 400, formula: '((2*L)+W)*H - 2' },
+  'Sandwich Panel Roof': { desc: 'Supply & installation of 9cm thick sandwich panel roof with sheets on both sides and insulation foam inside, 10cm slope for drainage, 100% waterproofing.', rate: 450, formula: 'W*L' },
+  'Gypsum Ceiling': { desc: 'Supply & installation of GI channel frame for gypsum board ceiling with white paint finishing.', rate: 120, formula: 'W*L' },
+  'Electric': { desc: 'Supply & installation of spot lights in gypsum board ceiling and power sockets as required.', rate: 1500, formula: 'fixed' },
+  'AC': { desc: 'Supply & installation of 1.5 Ton Samsung or Super General AC with up to 3m copper pipe connection and power supply installation.', rate: 3500, formula: 'fixed' }
 };
 
 const DEFAULT_TERMS = `• 60% Advance Payment.
@@ -274,7 +265,19 @@ const DEFAULT_TERMS = `• 60% Advance Payment.
 • 5% VAT is calculated on final invoices according to official tax policy.
 • Validity of This Offer for 07 Days Only.`;
 
-// ─── FETCH & PARSE SPREADSHEET DATA ─────────────────────────────────────────
+// ─── DATE AUTOFILL ENGINE ──────────────────────────────────────────────────
+function setTodayDate() {
+  const dateInput = document.getElementById('quotDate');
+  if (dateInput && !dateInput.value) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+}
+
+// ─── FETCH & PARSE SPREADSHEET DATA (DYNAMIC COLUMN MATCHING) ───────────────
 function loadSpreadsheetLibrary() {
   fetch(SPREADSHEET_CSV_URL)
     .then(res => res.text())
@@ -331,33 +334,73 @@ function parseCSV(text) {
 
 function processLibraryCSV(csvText) {
   const rows = parseCSV(csvText);
-  const tempLib = {};
-  let currentCategory = "";
-  let startIndex = 0;
-  
-  if (rows.length > 0 && (rows[0][0].toLowerCase().includes("category") || rows[0][0].toLowerCase().includes("item"))) {
-    startIndex = 1;
-  }
+  if (rows.length === 0) return {};
 
-  for (let i = startIndex; i < rows.length; i++) {
+  const tempLib = {};
+  
+  // Scrapes first row headers dynamically to identify column maps
+  const firstRow = rows[0].map(h => h.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+  
+  const colIndex = {
+    category: firstRow.findIndex(h => h.includes('category') || h.includes('worktype') || h.includes('work')),
+    itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('particular') || h.includes('name')),
+    description: firstRow.findIndex(h => h.includes('description') || h.includes('details') || h.includes('desc') || h.includes('particulars')),
+    price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost') || h.includes('m2')),
+    formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calculation') || h.includes('calc') || h.includes('type'))
+  };
+
+  const idxCat = colIndex.category;
+  const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
+  const idxDesc = colIndex.description !== -1 ? colIndex.description : 1;
+  const idxPrice = colIndex.price !== -1 ? colIndex.price : 2;
+  const idxForm = colIndex.formula !== -1 ? colIndex.formula : 3;
+
+  let activeCategory = "Custom";
+
+  for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row || row.length === 0) continue;
+
     const colA = row[0] ? row[0].trim() : "";
     const colB = row[1] ? row[1].trim() : "";
-    const colC = row[2] ? parseFloat(row[2].replace(/[^0-9.]/g, '')) || 0 : 0;
+    const colC = row[2] ? row[2].trim() : "";
     const colD = row[3] ? row[3].trim() : "";
 
-    if (colA && !colB && colC === 0 && !colD) {
-      currentCategory = colA;
-      tempLib[currentCategory] = [];
-    } else if (currentCategory && colA) {
-      tempLib[currentCategory].push({
-        name: colA,
-        desc: colB,
-        rate: colC,
-        formula: colD
-      });
+    // Parse category divider rows if they exist in Column A
+    if (colA && !colB && !colC && !colD) {
+      activeCategory = colA;
+      if (!tempLib[activeCategory]) {
+        tempLib[activeCategory] = [];
+      }
+      continue;
     }
+
+    let category = activeCategory;
+    if (idxCat !== -1 && row[idxCat]) {
+      const rowCatVal = row[idxCat].trim();
+      if (rowCatVal) category = rowCatVal;
+    }
+
+    const name = row[idxItem] ? row[idxItem].trim() : "";
+    const desc = row[idxDesc] ? row[idxDesc].trim() : "";
+    
+    let price = 0;
+    if (row[idxPrice]) {
+      price = parseFloat(row[idxPrice].replace(/[^0-9.]/g, '')) || 0;
+    }
+    const formula = row[idxForm] ? row[idxForm].trim().toLowerCase() : "";
+
+    if (!name) continue;
+
+    if (!tempLib[category]) {
+      tempLib[category] = [];
+    }
+    tempLib[category].push({
+      name: name,
+      desc: desc,
+      rate: price,
+      formula: formula
+    });
   }
   return tempLib;
 }
@@ -365,16 +408,14 @@ function processLibraryCSV(csvText) {
 function rebuildFlatItemLibrary() {
   flatItemLibrary = {};
   
-  // 1. Populate standard offline values
   Object.keys(ITEM_LIBRARY).forEach(key => {
     flatItemLibrary[key] = {
       desc: ITEM_LIBRARY[key].desc,
       rate: ITEM_LIBRARY[key].rate,
-      formula: ITEM_LIBRARY[key].isFixed ? 'fixed' : ''
+      formula: ITEM_LIBRARY[key].formula
     };
   });
 
-  // 2. Override/add with Google Sheet records
   Object.keys(parsedLibrary).forEach(cat => {
     parsedLibrary[cat].forEach(item => {
       flatItemLibrary[item.name] = {
@@ -385,7 +426,6 @@ function rebuildFlatItemLibrary() {
     });
   });
 
-  // 3. Rebuild Datalist tags
   const datalist = document.getElementById('itemNamesDatalist');
   if (datalist) {
     datalist.innerHTML = '';
@@ -501,15 +541,14 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
     <button class="btn-remove" onclick="removeItem(${id})">✕</button>
     <div class="item-grid">
       <div class="full">
-        <label>Item Name (Type for Autocomplete)</label>
-        <input type="text" id="name_${id}" list="itemNamesDatalist" value="${prefillName}" placeholder="Search or select item..." oninput="onItemNameInput(${id}, this.value)" style="font-weight:bold;">
+        <label>Item Name</label>
+        <input type="text" id="name_${id}" list="itemNamesDatalist" value="${prefillName}" placeholder="Type to search or select..." oninput="onItemNameInput(${id}, this.value)" style="font-weight:bold;">
       </div>
       <div class="full">
         <label>Description</label>
         <textarea id="desc_${id}" rows="2" style="width:100%;background:#16213e;border:1px solid #1a4a80;color:#eee;padding:6px 8px;border-radius:4px;font-size:11px;resize:vertical;" placeholder="Supply & Installation of...">${prefillDesc}</textarea>
       </div>
       
-      <!-- CUSTOM SIZES TOGGLE -->
       <div class="full" style="display:flex; align-items:center; gap:8px; margin-top:5px; margin-bottom:5px;">
         <input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})" style="width:16px; height:16px; cursor:pointer;" ${forceCustomSizes ? 'checked' : ''}>
         <label for="toggle_size_${id}" style="font-weight:bold; color:#1abc9c; cursor:pointer; margin:0; text-transform:none; font-size:12px;">📐 Custom Sizes / Measurements (Up to 5 sets)</label>
@@ -583,24 +622,24 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
   document.getElementById('itemsContainer').appendChild(div);
 }
 
-// AUTOFILL EVENT HANDLER FOR COMBOBOX
+// Autofills lines on drop selection matches
 function onItemNameInput(id, val) {
-  const match = flatItemLibrary[val.trim()];
-  if (match) {
-    document.getElementById('desc_' + id).value = match.desc;
+  const matched = flatItemLibrary[val.trim()];
+  if (matched) {
+    document.getElementById('desc_' + id).value = matched.desc || '';
     
-    const selector = document.getElementById('priceType_' + id);
+    const pricingSelect = document.getElementById('priceType_' + id);
     const rateInput = document.getElementById('rateInput_' + id);
     
-    if (match.formula === 'fixed') {
-      selector.value = 'Fixed';
+    if (matched.formula === 'fixed') {
+      pricingSelect.value = 'Fixed';
       onPriceTypeChange(id, 'Fixed');
     } else {
-      selector.value = 'Standard';
+      pricingSelect.value = 'Standard';
       onPriceTypeChange(id, 'Standard');
     }
     
-    rateInput.value = match.rate;
+    rateInput.value = matched.rate || 0;
     calcArea(id);
     generateQuotation();
     triggerSilentCloudSave();
@@ -807,15 +846,15 @@ function getCircularStampSVG() {
     <circle cx="100" cy="100" r="90" fill="none" stroke="#1d125f" stroke-width="1" />
     <circle cx="100" cy="100" r="62" fill="none" stroke="#1d125f" stroke-width="1" />
     <circle cx="100" cy="100" r="57" fill="none" stroke="#1d125f" stroke-width="2.5" />
-    <path id="topPathInvoice" d="M 25,100 A 75,75 0 0,1 175,100" fill="none" stroke="none" />
-    <path id="bottomPathInvoice" d="M 175,100 A 75,75 0 0,1 25,100" fill="none" stroke="none" />
+    <path id="stampTopPath" d="M 25,100 A 75,75 0 0,1 175,100" fill="none" stroke="none" />
+    <path id="stampBottomPath" d="M 175,100 A 75,75 0 0,1 25,100" fill="none" stroke="none" />
     <text fill="#1d125f" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="8.2" letter-spacing="0.3">
-      <textPath href="#topPathInvoice" startOffset="50%" text-anchor="middle">
+      <textPath href="#stampTopPath" startOffset="50%" text-anchor="middle">
         احمد الالمنيوم اند جلاس كونتراكتور ش.ذ.م.م - منطقة حرة
       </textPath>
     </text>
     <text fill="#1d125f" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="7.5" letter-spacing="0.3">
-      <textPath href="#bottomPathInvoice" startOffset="50%" text-anchor="middle">
+      <textPath href="#stampBottomPath" startOffset="50%" text-anchor="middle">
         AHMAD ALUMINIUM AND GLASS CONTRACTOR L.L.C-FZ
       </textPath>
     </text>
@@ -883,8 +922,6 @@ function saveDraft() {
     subject: document.getElementById('subject').value,
     docMode: document.getElementById('documentMode').value,
     vatToggle: document.getElementById('vatToggle').value,
-    notesPreset: document.getElementById('notesPreset').value,
-    customNotesText: document.getElementById('customNotesText').value,
     items: serializeItems()
   };
   localStorage.setItem('quotationDraft', JSON.stringify(draft));
@@ -892,15 +929,11 @@ function saveDraft() {
 
 function loadDraft() {
   const raw = localStorage.getItem('quotationDraft');
-  
-  // Set default notes structure before matching
-  document.getElementById('customNotesText').value = DEFAULT_TERMS;
-  document.getElementById('notesPreset').value = "fixed";
 
   if (raw) {
     try {
       const draft = JSON.parse(raw);
-      document.getElementById('quotRef').value = draft.ref || '';
+      if (draft.ref) document.getElementById('quotRef').value = draft.ref;
       if (draft.date) document.getElementById('quotDate').value = draft.date;
       document.getElementById('clientAddr').value = draft.clientAddr || '';
       document.getElementById('clientPhone').value = draft.clientPhone || '';
@@ -908,9 +941,6 @@ function loadDraft() {
       document.getElementById('subject').value = draft.subject || '';
       document.getElementById('documentMode').value = draft.docMode || 'Quotation';
       document.getElementById('vatToggle').value = draft.vatToggle || 'no';
-      
-      if (draft.notesPreset) document.getElementById('notesPreset').value = draft.notesPreset;
-      if (draft.customNotesText) document.getElementById('customNotesText').value = draft.customNotesText;
 
       if (draft.items && draft.items.length > 0) {
         deserializeItems(draft.items);
@@ -935,10 +965,10 @@ function clearDraft() {
     document.getElementById('subject').value = '';
     document.getElementById('documentMode').value = 'Quotation';
     document.getElementById('vatToggle').value = 'no';
-    document.getElementById('notesPreset').value = 'fixed';
-    document.getElementById('customNotesText').value = DEFAULT_TERMS;
     document.getElementById('itemsContainer').innerHTML = '';
     hasEstimatorBeenRun = false;
+    
+    setTodayDate();
     
     if (allFetchedQuotes.length > 0) {
       determineNextRefAndAssign(allFetchedQuotes);
@@ -949,14 +979,6 @@ function clearDraft() {
     addItem();
     saveDraft();
   }
-}
-
-function onNotesPresetChange(preset) {
-  if (preset === 'fixed') {
-    document.getElementById('customNotesText').value = DEFAULT_TERMS;
-  }
-  generateQuotation();
-  triggerSilentCloudSave();
 }
 
 document.getElementById('formPanel').addEventListener('input', triggerSilentCloudSave);
@@ -1045,7 +1067,7 @@ function loadSelectedQuote(ref) {
   }
 }
 
-// ─── LIVE AUTO QUOTATION SEQUENCE CALCULATOR ──────────────────────────────
+// ─── LIVE AUTO SEQUENCE REFERENCE GENERATOR ──────────────────────────────
 function determineNextRefAndAssign(quotes) {
   let highestNum = 200; // Baseline floor start at AA-2026-201
   quotes.forEach(q => {
@@ -1180,7 +1202,6 @@ function formatDate(dateStr) {
 function generateQuotation() {
   const ref = document.getElementById('quotRef').value || 'AA-2026-201';
   
-  // Set window title to quote reference for clean PDF save-naming
   document.title = ref;
 
   const date = formatDate(document.getElementById('quotDate').value);
@@ -1192,20 +1213,17 @@ function generateQuotation() {
   const isVatApplied = document.getElementById('vatToggle').value === 'yes';
   const items = getItems();
 
-  const rawNotesVal = document.getElementById('customNotesText').value || '';
-  const notesListHTML = rawNotesVal.split('\n').map(term => {
+  const notesListHTML = DEFAULT_TERMS.split('\n').map(term => {
     if(!term.trim()) return '';
     return `<li>${term.replace(/^•\s*/, '')}</li>`;
   }).join('');
 
   if (items.length === 0) { alert('Please add at least one item!'); return; }
 
-  // 2D Elevation Sketch Variables
   const gw = parseFloat(document.getElementById('globalWidth').value) || 0;
   const gl = parseFloat(document.getElementById('globalLength').value) || 0;
   const gh = parseFloat(document.getElementById('globalHeight').value) || 0;
   
-  // Show schematic only if custom room estimator values were loaded
   const schematicHTML = (hasEstimatorBeenRun && gw > 0 && gl > 0 && gh > 0) 
     ? generateSchematicSVG(gw, gl, gh) 
     : '';
@@ -1239,7 +1257,6 @@ function generateQuotation() {
     ? `<div style="font-size:12px; margin-top:2px;"><strong>TRN Number:</strong> 100452310200003</div>` 
     : '';
 
-  // Background rotatory grey watermark
   const watermarkHTML = `
     <div class="watermark-container">
       <div class="watermark-text">AHMAD ALUMINIUM</div>
@@ -1250,7 +1267,7 @@ function generateQuotation() {
   let totalsHTML = '';
 
   if (isInvoice) {
-    // ─── INVOICE VIEW (No sizes, calculates 60% Advance, single page format) ───
+    // ─── TAX INVOICE FORMAT (No terms, no schematics, stamp and signature only) ───
     tableHeaderHTML = `
       <tr>
         <th style="width:38px;">Sr.</th>
@@ -1287,7 +1304,7 @@ function generateQuotation() {
     totalsHTML += `
       <tr class="total-row">
         <td colspan="3" style="border:none; background:none !important;"></td>
-        <td style="text-align:right; font-weight:bold;">Advance</td>
+        <td style="text-align:right; font-weight:bold;">Advance (60%)</td>
         <td style="text-align:right;">${totalAdvanceAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
       </tr>`;
 
@@ -1307,7 +1324,6 @@ function generateQuotation() {
         <td style="text-align:right; color:#c0392b;">${finalInvoiceTotal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
       </tr>`;
 
-    // Render single page formal invoice document
     const invoicePage = `
     <div class="quotation-page">
       ${watermarkHTML}
@@ -1320,6 +1336,7 @@ function generateQuotation() {
             <div style="font-size:13px; line-height:1.6;">
               <div><strong>To:</strong> ${clientAddr.split(',')[0]}</div>
               <div><strong>Address:</strong> ${clientAddr}</div>
+              <div><strong>Phone:</strong> ${clientPhone}</div>
             </div>
           </div>
           <div style="text-align:right; font-size:13px; line-height:1.6;">
@@ -1343,25 +1360,16 @@ function generateQuotation() {
           </tbody>
         </table>
 
-        ${finalInvoiceTotal > 0 ? `<div class="amount-words" style="margin-bottom:10px;">Grand Total: <strong>${numberToWords(finalInvoiceTotal)}.</strong></div>` : ''}
+        ${finalInvoiceTotal > 0 ? `<div class="amount-words" style="margin-bottom:20px;">Grand Total: <strong>${numberToWords(finalInvoiceTotal)}.</strong></div>` : ''}
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; margin-top: 15px;">
-          <div>
-            <div class="doc-section-title" style="margin: 0 0 5px 0;">Terms & Conditions:</div>
-            <ul class="doc-list" style="font-size: 11px; line-height: 1.6;">
-              ${notesListHTML}
-            </ul>
-            <div style="text-align:center; margin-top: 15px;">
-              ${schematicHTML}
-            </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
+          <div style="width: 200px; text-align: center;">
+            <div style="font-size:11px; color:#666; margin-bottom:6px;">Company Seal / Stamp:</div>
+            ${getCircularStampSVG()}
           </div>
-          <div style="text-align: right;">
-            <div style="font-size:11px; color:#666; margin-bottom: 2px;">Company Seal / Stamp:</div>
-            <div style="margin-bottom: 10px;">
-              ${getCircularStampSVG()}
-            </div>
-            <div style="font-weight:bold; font-size:12px; margin-top: 10px;">SIGNATURE:</div>
-            <div style="font-family:cursive; font-size:22px; border-bottom:1px solid #333; display:inline-block; padding:0 30px 4px;">Ahmad</div>
+          <div style="text-align:right; width: 200px;">
+            <div style="font-size:11px; color:#666; margin-bottom:6px;">Signature:</div>
+            <div style="font-family:cursive; font-size:24px; border-bottom:1px solid #333; display:inline-block; padding:0 30px 4px; margin-bottom:10px;">Ahmad</div>
           </div>
         </div>
       </div>
@@ -1370,7 +1378,7 @@ function generateQuotation() {
     document.getElementById('quotationDoc').innerHTML = invoicePage;
 
   } else {
-    // ─── QUOTATION VIEW (Two page structure with full terms and bank grids) ───
+    // ─── STANDARD TWO-PAGE QUOTATION LAYOUT ───
     tableHeaderHTML = `
       <tr>
         <th style="width:38px;">Sr.</th>
@@ -1456,7 +1464,6 @@ function generateQuotation() {
         </table>
         ${finalQuotationTotal > 0 ? `<div class="amount-words">Grand Total: <strong>${numberToWords(finalQuotationTotal)}.</strong></div>` : ''}
         
-        <!-- Schematic panel integrated dynamically after table -->
         <div style="text-align:center;">
           ${schematicHTML}
         </div>
@@ -1471,7 +1478,7 @@ function generateQuotation() {
       <div style="position:relative; z-index:1;">
         <div style="font-size:11px; color:#999; text-align:right; margin-bottom:12px;">Reference No: ${ref} &nbsp;|&nbsp; Continued — Page 2</div>
 
-        <div class="doc-section-title">Payment Terms &amp; Conditions:</div>
+        <div class="doc-section-title">Terms &amp; Conditions:</div>
         <ul class="doc-list">
           ${notesListHTML}
         </ul>
@@ -1489,7 +1496,6 @@ function generateQuotation() {
             <div>+971 58 84 90 784</div>
           </div>
           
-          <!-- COMPANY STAMP -->
           <div style="text-align:center; z-index: 10; position: relative;">
             ${getCircularStampSVG()}
           </div>
@@ -1500,7 +1506,6 @@ function generateQuotation() {
           </div>
         </div>
 
-        <!-- BANK DETAILS (Stacked vertically with clean layout as requested) -->
         <div style="border-top:2px solid #c0392b; padding-top:15px;">
           <h3 style="color:#c0392b; font-size:14px; font-weight:bold; text-align:center; margin-bottom:12px; text-transform:uppercase; letter-spacing:2px;">Company Bank Account Details</h3>
           <div class="bank-grid-vertical">
@@ -1549,6 +1554,11 @@ function downloadPDF() {
 
 // ─── INITIALIZATION ON LOAD ───────────────────────────────────────────────
 window.addEventListener('load', () => {
+  const refInput = document.getElementById('quotRef');
+  if (refInput && !refInput.value) {
+    refInput.value = "AA-2026-201";
+  }
+  setTodayDate();
   loadDraft();
   loadSpreadsheetLibrary();
   fetchRecentQuotes();
