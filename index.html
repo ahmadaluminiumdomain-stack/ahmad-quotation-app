@@ -86,7 +86,7 @@
   @media print {
     @page {
       size: A4;
-      margin: 0 !important; /* Strip browser URL headers & footers from print layout */
+      margin: 0 !important; /* Strip default URL titles & footers from PDF outputs */
     }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .app-header, .form-panel, .preview-toolbar, .page-break-divider { display: none !important; }
@@ -98,7 +98,7 @@
       width: 100% !important;
       height: auto !important;
       min-height: 297mm !important;
-      padding: 20mm 15mm 15mm 15mm !important; /* Safety print boundary offset */
+      padding: 20mm 15mm 15mm 15mm !important; /* Boundary margin to protect alignment on print margins */
       margin: 0 !important;
       page-break-after: always !important;
     }
@@ -114,7 +114,7 @@
 <div class="app-header">
   <div>
     <h1>🏢 Ahmad Aluminium & Glass Cont</h1>
-    <span>#1 Aluminium & Glass Cont UAE — Quotation/Invoice System</span>
+    <span>#1 Aluminium & Glass Cont UAE — Quotation System</span>
   </div>
 </div>
 
@@ -145,15 +145,6 @@
       <label>⚙️ Work Type Category</label>
       <select id="workTypeSelector" onchange="onWorkTypeChange(this.value)">
         <option value="Custom">Custom / Manual Input</option>
-      </select>
-    </div>
-
-    <!-- DOCUMENT TYPE SWITCHER -->
-    <div class="form-group">
-      <label>📑 Document Format Layout</label>
-      <select id="documentMode" onchange="updateFormVisibility(); generateQuotation(); triggerSilentCloudSave();">
-        <option value="Quotation">Standard Quotation</option>
-        <option value="Invoice">Tax Invoice (With Advance / No Sizes)</option>
       </select>
     </div>
 
@@ -195,40 +186,7 @@
       </select>
     </div>
 
-    <!-- INVOICE CUSTOM AMOUNTS INTERFACE (Hides during Quotation mode) -->
-    <div id="invoiceAmountsContainer" style="display: none; background: rgba(231, 76, 60, 0.08); padding: 12px; border-radius: 6px; border: 1px solid rgba(231, 76, 60, 0.25); margin-bottom: 15px;">
-      <label style="color: #ffb4a2; font-weight: bold; font-size: 11px; display: block; margin-bottom: 8px;">💵 Invoice Particulars & Amounts (AED)</label>
-      
-      <div style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 8px;">
-        <label style="font-size: 9px;">Line #1 Particulars</label>
-        <input type="text" id="invPart1" placeholder="e.g. Aluminium Segments Installation" style="margin-bottom: 4px;">
-        <label style="font-size: 9px;">Line #1 Amount (AED)</label>
-        <input type="number" id="invAmt1" placeholder="0" oninput="generateQuotation(); triggerSilentCloudSave();">
-      </div>
-
-      <div style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 8px;">
-        <label style="font-size: 9px;">Line #2 Particulars</label>
-        <input type="text" id="invPart2" placeholder="e.g. Double Glass Section Setup" style="margin-bottom: 4px;">
-        <label style="font-size: 9px;">Line #2 Amount (AED)</label>
-        <input type="number" id="invAmt2" placeholder="0" oninput="generateQuotation(); triggerSilentCloudSave();">
-      </div>
-
-      <div style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 8px;">
-        <label style="font-size: 9px;">Line #3 Particulars</label>
-        <input type="text" id="invPart3" placeholder="e.g. Roof Insulations Work" style="margin-bottom: 4px;">
-        <label style="font-size: 9px;">Line #3 Amount (AED)</label>
-        <input type="number" id="invAmt3" placeholder="0" oninput="generateQuotation(); triggerSilentCloudSave();">
-      </div>
-
-      <div>
-        <label style="font-size: 9px;">Line #4 Particulars</label>
-        <input type="text" id="invPart4" placeholder="Optional particulars" style="margin-bottom: 4px;">
-        <label style="font-size: 9px;">Line #4 Amount (AED)</label>
-        <input type="number" id="invAmt4" placeholder="0" oninput="generateQuotation(); triggerSilentCloudSave();">
-      </div>
-    </div>
-
-    <!-- PARAMETRIC SMART ESTIMATOR PANEL (In Centimeters - Hidden on Invoice Mode) -->
+    <!-- PARAMETRIC SMART ESTIMATOR PANEL (In Centimeters) -->
     <div id="smartEstimatorPanel" class="form-group" style="background: rgba(22, 160, 133, 0.15); padding: 12px; border-radius: 6px; border: 1px solid #1abc9c; margin-top: 15px; margin-bottom: 15px;">
       <label style="color: #1abc9c; font-weight: bold; font-size: 11px; margin-bottom: 8px; display: block; letter-spacing: 1px;">📐 Smart Room Estimator (In Centimeters)</label>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px;">
@@ -297,20 +255,6 @@ const DEFAULT_TERMS = `• 60% Advance Payment.
 • 5% VAT is calculated on final invoices according to official tax policy.
 • Validity of This Offer for 07 Days Only.`;
 
-// ─── VISIBILITY CONTROL ───────────────────────────────────────────────────
-function updateFormVisibility() {
-  const mode = document.getElementById('documentMode').value;
-  const isInvoice = (mode === 'Invoice');
-
-  document.getElementById('smartEstimatorPanel').style.display = isInvoice ? 'none' : 'block';
-  document.getElementById('itemsHeading').style.display = isInvoice ? 'none' : 'block';
-  document.getElementById('itemsContainer').style.display = isInvoice ? 'none' : 'block';
-  document.querySelector('.btn-add').style.display = isInvoice ? 'none' : 'block';
-  document.getElementById('workTypeSelector').closest('.form-group').style.display = isInvoice ? 'none' : 'block';
-  
-  document.getElementById('invoiceAmountsContainer').style.display = isInvoice ? 'block' : 'none';
-}
-
 // ─── DATE AUTOFILL ENGINE ──────────────────────────────────────────────────
 function setTodayDate() {
   const dateInput = document.getElementById('quotDate');
@@ -326,14 +270,18 @@ function setTodayDate() {
 // ─── FETCH & PARSE SPREADSHEET DATA (DYNAMIC COLUMN MATCHING) ───────────────
 function loadSpreadsheetLibrary() {
   fetch(SPREADSHEET_CSV_URL)
-    .then(res => res.text())
+    .then(res => {
+      if (!res.ok) throw new Error("Connection Blocked");
+      return res.text();
+    })
     .then(csvText => {
       parsedLibrary = processLibraryCSV(csvText);
       populateCategorySelector(parsedLibrary);
       rebuildFlatItemLibrary();
+      generateQuotation();
     })
     .catch(err => {
-      console.warn("Spreadsheet connection offline. Using local layout fallback.", err);
+      console.warn("Spreadsheet restricted (Local file/CORS protection active). Loading local database fallback.", err);
       parsedLibrary = {
         "Glass Room": [
           { name: "Structure", desc: ITEM_LIBRARY["Structure"].desc, rate: 1200, formula: "W*L" },
@@ -347,6 +295,7 @@ function loadSpreadsheetLibrary() {
       };
       populateCategorySelector(parsedLibrary);
       rebuildFlatItemLibrary();
+      generateQuotation();
     });
 }
 
@@ -379,78 +328,81 @@ function parseCSV(text) {
 }
 
 function processLibraryCSV(csvText) {
-  const rows = parseCSV(csvText);
-  if (rows.length === 0) return {};
+  try {
+    const rows = parseCSV(csvText);
+    if (!rows || rows.length === 0) return {};
 
-  const tempLib = {};
-  
-  // Find column indicators dynamically in first row headers
-  const firstRow = rows[0].map(h => h.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
-  
-  const colIndex = {
-    category: firstRow.findIndex(h => h.includes('category') || h.includes('worktype') || h.includes('work')),
-    itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('particular') || h.includes('name')),
-    description: firstRow.findIndex(h => h.includes('description') || h.includes('details') || h.includes('desc') || h.includes('particulars')),
-    price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost') || h.includes('m2')),
-    formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calculation') || h.includes('calc') || h.includes('type'))
-  };
-
-  const idxCat = colIndex.category;
-  const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
-  
-  // Make sure idxDesc, idxPrice and idxForm are offset safely so they do not overlap itemName
-  const idxDesc = colIndex.description !== -1 ? colIndex.description : (idxItem === 0 ? 1 : 2);
-  const idxPrice = colIndex.price !== -1 ? colIndex.price : (idxDesc === 1 ? 2 : 3);
-  const idxForm = colIndex.formula !== -1 ? colIndex.formula : (idxPrice === 2 ? 3 : 4);
-
-  let activeCategory = "Custom";
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || row.length === 0) continue;
-
-    const colA = row[0] ? row[0].trim() : "";
-    const colB = row[1] ? row[1].trim() : "";
-    const colC = row[2] ? row[2].trim() : "";
-    const colD = row[3] ? row[3].trim() : "";
-
-    // Parse category divider rows
-    if (colA && !colB && !colC && !colD) {
-      activeCategory = colA;
-      if (!tempLib[activeCategory]) {
-        tempLib[activeCategory] = [];
-      }
-      continue;
-    }
-
-    let category = activeCategory;
-    if (idxCat !== -1 && row[idxCat]) {
-      const rowCatVal = row[idxCat].trim();
-      if (rowCatVal) category = rowCatVal;
-    }
-
-    const name = row[idxItem] ? row[idxItem].trim() : "";
-    const desc = row[idxDesc] ? row[idxDesc].trim() : "";
+    const tempLib = {};
+    const firstRow = rows[0].map(h => (h || '').toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
     
-    let price = 0;
-    if (row[idxPrice]) {
-      price = parseFloat(row[idxPrice].replace(/[^0-9.]/g, '')) || 0;
-    }
-    const formula = row[idxForm] ? row[idxForm].trim().toLowerCase() : "";
+    const colIndex = {
+      category: firstRow.indexOf('category'),
+      itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('name') || h.includes('particular')),
+      description: firstRow.findIndex(h => h.includes('description') || h.includes('desc') || h.includes('particulars')),
+      price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost')),
+      formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calc'))
+    };
 
-    if (!name) continue;
+    const idxCat = colIndex.category;
+    const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
+    
+    // Explicit column tracking overrides to prevent Name/Description from merging
+    const idxDesc = colIndex.description !== -1 ? colIndex.description : (idxItem === 0 ? 1 : 2);
+    const idxPrice = colIndex.price !== -1 ? colIndex.price : (idxDesc === 1 ? 2 : 3);
+    const idxForm = colIndex.formula !== -1 ? colIndex.formula : (idxPrice === 2 ? 3 : 4);
 
-    if (!tempLib[category]) {
-      tempLib[category] = [];
+    let activeCategory = "Glass Room";
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const colA = row[0] ? row[0].trim() : "";
+      const colB = row[1] ? row[1].trim() : "";
+      const colC = row[2] ? row[2].trim() : "";
+      const colD = row[3] ? row[3].trim() : "";
+
+      // Scrape category partitions
+      if (colA && !colB && !colC && !colD) {
+        activeCategory = colA;
+        if (!tempLib[activeCategory]) {
+          tempLib[activeCategory] = [];
+        }
+        continue;
+      }
+
+      let category = activeCategory;
+      if (idxCat !== -1 && row[idxCat]) {
+        const rowCatVal = row[idxCat].trim();
+        if (rowCatVal) category = rowCatVal;
+      }
+
+      const name = row[idxItem] ? row[idxItem].trim() : "";
+      const desc = row[idxDesc] ? row[idxDesc].trim() : "";
+      
+      let price = 0;
+      if (row[idxPrice]) {
+        price = parseFloat(row[idxPrice].replace(/[^0-9.]/g, '')) || 0;
+      }
+      const formula = row[idxForm] ? row[idxForm].trim().toLowerCase() : "";
+
+      if (!name) continue;
+
+      if (!tempLib[category]) {
+        tempLib[category] = [];
+      }
+      tempLib[category].push({
+        name: name,
+        desc: desc,
+        rate: price,
+        formula: formula
+      });
     }
-    tempLib[category].push({
-      name: name,
-      desc: desc,
-      rate: price,
-      formula: formula
-    });
+    return tempLib;
+  } catch (e) {
+    console.error("CSV Processing breakdown. Bypassing safely.", e);
+    return {};
   }
-  return tempLib;
 }
 
 function rebuildFlatItemLibrary() {
@@ -574,14 +526,14 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
     <div class="item-grid">
       <div class="full">
         <label>Item Name</label>
-        <input type="text" id="name_${id}" list="itemNamesDatalist" value="${prefillName}" placeholder="Search or select..." oninput="onItemNameInput(${id}, this.value)" style="font-weight:bold;">
+        <input type="text" id="name_${id}" list="itemNamesDatalist" value="${prefillName}" placeholder="Type to search or select..." oninput="onItemNameInput(${id}, this.value)" style="font-weight:bold;">
       </div>
       <div class="full">
         <label>Description</label>
         <textarea id="desc_${id}" rows="2" style="width:100%;background:#16213e;border:1px solid #1a4a80;color:#eee;padding:6px 8px;border-radius:4px;font-size:11px;resize:vertical;" placeholder="Supply & Installation of...">${prefillDesc}</textarea>
       </div>
       
-      <!-- Custom Dimensions block (W, L, H, Qty across 5 rows) -->
+      <!-- Custom Dimensions block (Width, Length, Height, Quantity) -->
       <div class="full" style="display:flex; align-items:center; gap:8px; margin-top:5px; margin-bottom:5px;">
         <input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})" style="width:16px; height:16px; cursor:pointer;" ${forceCustomSizes ? 'checked' : ''}>
         <label for="toggle_size_${id}" style="font-weight:bold; color:#1abc9c; cursor:pointer; margin:0; text-transform:none; font-size:12px;">📐 Custom Sizes / Measurements (Up to 5 sets)</label>
@@ -921,91 +873,220 @@ function getItems() {
 
 // ─── LOCAL STORAGE SERIALIZATION ───────────────────────────────────────────
 function serializeItems() {
-  const mode = document.getElementById('documentMode').value;
-  if (mode === 'Invoice') {
-    const invItems = [];
-    for (let i = 1; i <= 4; i++) {
-      invItems.push({
-        particular: document.getElementById('invPart' + i).value,
-        amount: document.getElementById('invAmt' + i).value
-      });
-    }
-    return { type: 'Invoice', data: invItems };
-  } else {
-    const items = [];
-    document.querySelectorAll('.item-row').forEach(row => {
-      const id = row.id.replace('item_', '');
-      const name = document.getElementById('name_' + id).value;
-      const desc = document.getElementById('desc_' + id).value;
-      const priceType = document.getElementById('priceType_' + id).value;
-      const rateInput = document.getElementById('rateInput_' + id).value;
-      const sizesChecked = document.getElementById('toggle_size_' + id).checked;
-      const sizes = [];
-      if (sizesChecked) {
-        for (let s = 1; s <= 5; s++) {
-          sizes.push({
-            w: document.getElementById(`w${s}_${id}`).value,
-            l: document.getElementById(`l${s}_${id}`).value,
-            h: document.getElementById(`h${s}_${id}`).value,
-            qty: document.getElementById(`qty${s}_${id}`).value
-          });
-        }
-      }
-      items.push({ name, desc, priceType, rateInput, sizesChecked, sizes });
-    });
-    return { type: 'Quotation', data: items };
-  }
-}
-
-function deserializeItems(serialized) {
-  let mode = 'Quotation';
-  let data = [];
-  if (serialized && serialized.type) {
-    mode = serialized.type;
-    data = serialized.data;
-  } else if (Array.isArray(serialized)) {
-    data = serialized;
-  }
-
-  document.getElementById('documentMode').value = mode;
-  updateFormVisibility();
-
-  if (mode === 'Invoice') {
-    for (let i = 1; i <= 4; i++) {
-      const item = data[i - 1] || {};
-      document.getElementById('invPart' + i).value = item.particular || '';
-      document.getElementById('invAmt' + i).value = item.amount || '';
-    }
-  } else {
-    document.getElementById('itemsContainer').innerHTML = '';
-    itemCount = 0;
-    data.forEach(item => {
-      addItem(item.name, item.desc, item.sizesChecked);
-      const id = itemCount;
-      document.getElementById('priceType_' + id).value = item.priceType || 'Standard';
-      onPriceTypeChange(id, item.priceType || 'Standard');
-      document.getElementById('rateInput_' + id).value = item.rateInput || '';
-      if (item.sizes && item.sizesChecked) {
-        item.sizes.forEach((sz, idx) => {
-          const s = idx + 1;
-          document.getElementById(`w${s}_${id}`).value = sz.w || '';
-          document.getElementById(`l${s}_${id}`).value = sz.l || '';
-          document.getElementById(`h${s}_${id}`).value = sz.h || '';
-          document.getElementById(`qty${s}_${id}`).value = sz.qty || '';
+  const items = [];
+  document.querySelectorAll('.item-row').forEach(row => {
+    const id = row.id.replace('item_', '');
+    const name = document.getElementById('name_' + id).value;
+    const desc = document.getElementById('desc_' + id).value;
+    const priceType = document.getElementById('priceType_' + id).value;
+    const rateInput = document.getElementById('rateInput_' + id).value;
+    const sizesChecked = document.getElementById('toggle_size_' + id).checked;
+    const sizes = [];
+    if (sizesChecked) {
+      for (let s = 1; s <= 5; s++) {
+        sizes.push({
+          w: document.getElementById(`w${s}_${id}`).value,
+          l: document.getElementById(`l${s}_${id}`).value,
+          h: document.getElementById(`h${s}_${id}`).value,
+          qty: document.getElementById(`qty${s}_${id}`).value
         });
       }
-      calcArea(id);
-    });
-  }
-  generateQuotation();
+    }
+    items.push({ name, desc, priceType, rateInput, sizesChecked, sizes });
+  });
+  return items;
 }
 
-function downloadPDF() {
-  const s = document.createElement('style');
-  s.textContent = '@media print { body{background:white!important;} .app-header,.form-panel,.preview-toolbar{display:none!important;} .container{display:block!important;} .preview-panel{padding:0!important;background:white!important;} .quotation-page{box-shadow:none!important;width:100%!important;} .page-break-divider{display:none!important;} }';
-  document.head.appendChild(s);
-  window.print();
-  setTimeout(() => document.head.removeChild(s), 1000);
+function deserializeItems(data) {
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+  
+  const parsedData = Array.isArray(data) ? data : (data.data || []);
+  
+  parsedData.forEach(item => {
+    addItem(item.name, item.desc, item.sizesChecked);
+    const id = itemCount;
+    document.getElementById('priceType_' + id).value = item.priceType || 'Standard';
+    onPriceTypeChange(id, item.priceType || 'Standard');
+    document.getElementById('rateInput_' + id).value = item.rateInput || '';
+    if (item.sizes && item.sizesChecked) {
+      item.sizes.forEach((sz, idx) => {
+        const s = idx + 1;
+        document.getElementById(`w${s}_${id}`).value = sz.w || '';
+        document.getElementById(`l${s}_${id}`).value = sz.l || '';
+        document.getElementById(`h${s}_${id}`).value = sz.h || '';
+        document.getElementById(`qty${s}_${id}`).value = sz.qty || '';
+      });
+    }
+    calcArea(id);
+  });
+}
+
+// ─── LOCAL STORAGE DRAFTS ─────────────────────────────────────────────────
+function saveDraft() {
+  const draft = {
+    ref: document.getElementById('quotRef').value,
+    date: document.getElementById('quotDate').value,
+    clientAddr: document.getElementById('clientAddr').value,
+    clientPhone: document.getElementById('clientPhone').value,
+    clientEmail: document.getElementById('clientEmail').value,
+    subject: document.getElementById('subject').value,
+    vatToggle: document.getElementById('vatToggle').value,
+    items: serializeItems()
+  };
+  localStorage.setItem('quotationDraft', JSON.stringify(draft));
+}
+
+function loadDraft() {
+  const raw = localStorage.getItem('quotationDraft');
+
+  if (raw) {
+    try {
+      const draft = JSON.parse(raw);
+      if (draft.ref) document.getElementById('quotRef').value = draft.ref;
+      if (draft.date) document.getElementById('quotDate').value = draft.date;
+      document.getElementById('clientAddr').value = draft.clientAddr || '';
+      document.getElementById('clientPhone').value = draft.clientPhone || '';
+      document.getElementById('clientEmail').value = draft.clientEmail || '';
+      document.getElementById('subject').value = draft.subject || '';
+      document.getElementById('vatToggle').value = draft.vatToggle || 'no';
+
+      if (draft.items) {
+        deserializeItems(draft.items);
+      } else {
+        addItem();
+      }
+    } catch (e) {
+      console.error(e);
+      addItem();
+    }
+  } else {
+    addItem();
+  }
+}
+
+function clearDraft() {
+  if (confirm('Clear entire form inputs and reset?')) {
+    localStorage.removeItem('quotationDraft');
+    document.getElementById('clientAddr').value = '';
+    document.getElementById('clientPhone').value = '';
+    document.getElementById('clientEmail').value = '';
+    document.getElementById('subject').value = '';
+    document.getElementById('vatToggle').value = 'no';
+    document.getElementById('itemsContainer').innerHTML = '';
+    hasEstimatorBeenRun = false;
+    
+    setTodayDate();
+    
+    if (allFetchedQuotes.length > 0) {
+      determineNextRefAndAssign(allFetchedQuotes);
+    } else {
+      document.getElementById('quotRef').value = "AA-2026-201";
+    }
+    
+    addItem();
+    saveDraft();
+  }
+}
+
+document.getElementById('formPanel').addEventListener('input', triggerSilentCloudSave);
+document.getElementById('formPanel').addEventListener('change', triggerSilentCloudSave);
+
+// ─── CLOUD SYNC DIRECTORY ──────────────────────────────────────────────────
+let allFetchedQuotes = [];
+function fetchRecentQuotes() {
+  const listEl = document.getElementById('recentQuotesList');
+  listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">Connecting...</div>';
+  fetch(DB_URL)
+  .then(res => res.json())
+  .then(quotes => {
+    allFetchedQuotes = quotes;
+    renderQuotesList(quotes);
+    determineNextRefAndAssign(quotes);
+  })
+  .catch(err => {
+    console.error(err);
+    listEl.innerHTML = '<div style="text-align: center; color: #ffb4a2; padding: 10px;">Connection issue</div>';
+  });
+}
+
+function fetchRecentQuotesSilently() {
+  fetch(DB_URL)
+  .then(res => res.json())
+  .then(quotes => {
+    allFetchedQuotes = quotes;
+    renderQuotesList(quotes);
+  })
+  .catch(err => console.error(err));
+}
+
+function renderQuotesList(quotes) {
+  const listEl = document.getElementById('recentQuotesList');
+  if (!quotes || quotes.length === 0) {
+    listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">No entries</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  quotes.forEach(q => {
+    const item = document.createElement('div');
+    item.style.padding = '6px';
+    item.style.borderBottom = '1px solid #1a4a80';
+    item.style.cursor = 'pointer';
+    item.onmouseover = () => item.style.background = '#16213e';
+    item.onmouseout = () => item.style.background = 'none';
+    item.onclick = () => loadSelectedQuote(q.ref);
+    item.innerHTML = `
+      <div style="display:flex; justify-content:space-between; font-weight:bold;">
+        <span style="color:#e74c3c;">${q.ref}</span>
+        <span style="font-size:10px; color:#4ecca3;">${q.date || ''}</span>
+      </div>
+      <div style="font-size:10px; color:#aaa; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        ${q.clientAddr || ''} - ${q.subject || ''}
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function filterRecentQuotes() {
+  const query = document.getElementById('searchQuotes').value.toLowerCase();
+  const filtered = allFetchedQuotes.filter(q => {
+    return (q.ref && q.ref.toLowerCase().includes(query)) ||
+           (q.clientAddr && q.clientAddr.toLowerCase().includes(query)) ||
+           (q.subject && q.subject.toLowerCase().includes(query));
+  });
+  renderQuotesList(filtered);
+}
+
+function loadSelectedQuote(ref) {
+  const found = allFetchedQuotes.find(q => q.ref === ref);
+  if (found) {
+    document.getElementById('quotRef').value = found.ref;
+    document.getElementById('quotDate').value = found.date;
+    document.getElementById('clientAddr').value = found.clientAddr;
+    document.getElementById('clientPhone').value = found.clientPhone;
+    document.getElementById('clientEmail').value = found.clientEmail;
+    document.getElementById('subject').value = found.subject;
+    if (found.itemsJson) {
+      const itemsData = JSON.parse(found.itemsJson);
+      deserializeItems(itemsData);
+    }
+    generateQuotation();
+  }
+}
+
+// ─── LIVE AUTO SEQUENCE REFERENCE GENERATOR ──────────────────────────────
+function determineNextRefAndAssign(quotes) {
+  let highestNum = 200; // Baseline floor start at AA-2026-201
+  quotes.forEach(q => {
+    const match = q.ref.match(/AA-\d+-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > highestNum) highestNum = num;
+    }
+  });
+  const computedNext = highestNum + 1;
+  document.getElementById('quotRef').value = "AA-2026-" + computedNext;
 }
 
 // ─── DOCUMENT LAYOUT GENERATOR ──────────────────────────────────────────────
@@ -1018,15 +1099,12 @@ function generateQuotation() {
   const clientPhone = document.getElementById('clientPhone').value || 'NA';
   const clientEmail = document.getElementById('clientEmail').value || 'NA';
   const subject = document.getElementById('subject').value || 'Supply & Installation Works';
-  const documentMode = document.getElementById('documentMode').value;
   const isVatApplied = document.getElementById('vatToggle').value === 'yes';
 
   const notesListHTML = DEFAULT_TERMS.split('\n').map(term => {
     if(!term.trim()) return '';
     return `<li>${term.replace(/^•\s*/, '')}</li>`;
   }).join('');
-
-  const isInvoice = (documentMode === 'Invoice');
 
   // Header Logo and branding layout 
   const headerHTML = `
@@ -1042,7 +1120,7 @@ function generateQuotation() {
         </div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:38px; font-weight:900; color:#c0392b; letter-spacing:5px; text-transform:uppercase;">${documentMode.toUpperCase()}</div>
+        <div style="font-size:38px; font-weight:900; color:#c0392b; letter-spacing:5px; text-transform:uppercase;">QUOTATION</div>
       </div>
     </div>
     <div style="background:#fdf5f5; border:1px solid #e0c0c0; padding:7px 14px; display:flex; gap:30px; font-size:12px; margin-bottom:12px; border-radius:4px; align-items:center; color:#c0392b; font-weight:bold;">
@@ -1064,307 +1142,178 @@ function generateQuotation() {
   let rowsHTML = '';
   let totalsHTML = '';
 
-  if (isInvoice) {
-    // ─── TAX INVOICE FORMAT (Only custom invoice rows, stamp and signature) ───
-    tableHeaderHTML = `
-      <tr>
-        <th style="width:38px;">Sr.</th>
-        <th>Particulars</th>
-        <th style="width:120px; text-align:right;">Amount</th>
-        <th style="width:120px; text-align:right;">Advance60%</th>
-        <th style="width:140px; text-align:right;">Total Amount (AED)</th>
-      </tr>`;
+  // ─── STANDARD TWO-PAGE QUOTATION LAYOUT ───
+  tableHeaderHTML = `
+    <tr>
+      <th style="width:38px;">Sr.</th>
+      <th>Particulars / Description</th>
+      <th style="width:160px; text-align:center;">Size (cm)</th>
+      <th style="width:120px; text-align:right;">Total Amount (AED)</th>
+    </tr>`;
 
-    const invItems = [];
-    for (let i = 1; i <= 4; i++) {
-      const part = document.getElementById('invPart' + i).value.trim();
-      const amt = parseFloat(document.getElementById('invAmt' + i).value) || 0;
-      if (part || amt > 0) {
-        invItems.push({ particulars: part || `Particular Segment Line #${i}`, amount: amt });
-      }
-    }
+  const items = getItems();
+  let totalAmount = 0;
+  items.forEach((item, idx) => {
+    totalAmount += item.amount;
+    const sizeCell = item.size.split(' | ').join('<br>');
+    rowsHTML += `<tr>
+      <td style="text-align:center; font-weight:bold; vertical-align:top;">${idx + 1}</td>
+      <td style="vertical-align:top;">
+        <span class="item-name">${item.itemName || 'Custom Item'}</span>
+        <span class="item-desc">${item.desc}</span>
+      </td>
+      <td style="text-align:center; vertical-align:top; font-size:11px; line-height:1.4;">
+        ${sizeCell}
+        ${item.roundedArea ? '<br><span style="font-size:10px; color:#c0392b; font-weight:bold;">Total Area: '+item.roundedArea+' m²</span>' : ''}
+      </td>
+      <td style="text-align:right; font-weight:bold; vertical-align:top;">${item.amount > 0 ? item.amount.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}</td>
+    </tr>`;
+  });
 
-    if (invItems.length === 0) {
-      document.getElementById('quotationDoc').innerHTML = `
-        <div style="text-align:center; color:#999; padding:80px 0; font-size:16px;">
-          Fill out the invoice particulars and click <strong style="color:#e74c3c">Generate Quotation</strong>
-        </div>`;
-      return;
-    }
+  const vatAmount = totalAmount * 0.05;
+  const finalQuotationTotal = isVatApplied ? (totalAmount + vatAmount) : totalAmount;
 
-    let totalBaseAmount = 0;
-    let totalAdvanceAmount = 0;
-
-    invItems.forEach((item, idx) => {
-      const baseItemAmount = item.amount;
-      const advanceItemAmount = baseItemAmount * 0.60;
-      totalBaseAmount += baseItemAmount;
-      totalAdvanceAmount += advanceItemAmount;
-
-      rowsHTML += `<tr>
-        <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
-        <td>
-          <span class="item-name">${item.particulars}</span>
-        </td>
-        <td style="text-align:right;">${baseItemAmount.toLocaleString('en', {minimumFractionDigits:2})}</td>
-        <td style="text-align:right;">${advanceItemAmount.toLocaleString('en', {minimumFractionDigits:2})}</td>
-        <td style="text-align:right; font-weight:bold;">${advanceItemAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
-      </tr>`;
-    });
-
-    const vatVal = totalAdvanceAmount * 0.05;
-    const finalInvoiceTotal = isVatApplied ? (totalAdvanceAmount + vatVal) : totalAdvanceAmount;
-
-    totalsHTML += `
-      <tr class="total-row">
-        <td colspan="3" style="border:none; background:none !important;"></td>
-        <td style="text-align:right; font-weight:bold;">Advance (60%)</td>
-        <td style="text-align:right;">${totalAdvanceAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
-      </tr>`;
-
-    if (isVatApplied) {
-      totalsHTML += `
-        <tr class="total-row">
-          <td colspan="3" style="border:none; background:none !important;"></td>
-          <td style="text-align:right; font-weight:bold;">VAT (5%)</td>
-          <td style="text-align:right;">${vatVal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
-        </tr>`;
-    }
-
-    totalsHTML += `
-      <tr class="total-row">
-        <td colspan="3" style="border:none; background:none !important;"></td>
-        <td style="text-align:right; font-weight:bold;">Grand Total</td>
-        <td style="text-align:right; color:#c0392b;">${finalInvoiceTotal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
-      </tr>`;
-
-    const invoicePage = `
-    <div class="quotation-page">
-      ${watermarkHTML}
-      <div style="position:relative; z-index:1;">
-        ${headerHTML}
-        
-        <div class="client-meta-grid" style="margin-top:15px; margin-bottom:15px;">
-          <div>
-            <div class="section-label" style="font-size:12px; color:#c0392b;">CLIENT DETAILS:</div>
-            <div style="font-size:13px; line-height:1.6;">
-              <div><strong>To:</strong> ${clientAddr.split(',')[0]}</div>
-              <div><strong>Address:</strong> ${clientAddr}</div>
-              <div><strong>Phone:</strong> ${clientPhone}</div>
-            </div>
-          </div>
-          <div style="text-align:right; font-size:13px; line-height:1.6;">
-            <div><strong>Invoice No:</strong> ${ref}</div>
-            <div><strong>Date:</strong> ${date}</div>
-            ${trnRowHTML}
-          </div>
-        </div>
-
-        <div style="text-align:center; font-style:italic; font-weight:bold; font-size:13px; color:#222; border-bottom:1.5px solid #ccc; border-top:1.5px solid #ccc; padding:6px 0; margin-bottom:15px;">
-          Subject: ${subject}
-        </div>
-
-        <table>
-          <thead>
-            ${tableHeaderHTML}
-          </thead>
-          <tbody>
-            ${rowsHTML}
-            ${totalsHTML}
-          </tbody>
-        </table>
-
-        ${finalInvoiceTotal > 0 ? `<div class="amount-words" style="margin-bottom:20px;">Grand Total: <strong>${numberToWords(finalInvoiceTotal)}.</strong></div>` : ''}
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
-          <div style="width: 200px; text-align: center;">
-            <div style="font-size:11px; color:#666; margin-bottom:6px;">Company Seal / Stamp:</div>
-            ${getCircularStampSVG()}
-          </div>
-          <div style="text-align:right; width: 200px;">
-            <div style="font-size:11px; color:#666; margin-bottom:6px;">Signature:</div>
-            <div style="font-family:cursive; font-size:24px; border-bottom:1px solid #333; display:inline-block; padding:0 30px 4px; margin-bottom:10px;">Ahmad</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-
-    document.getElementById('quotationDoc').innerHTML = invoicePage;
-
-  } else {
-    // ─── STANDARD TWO-PAGE QUOTATION LAYOUT ───
-    tableHeaderHTML = `
-      <tr>
-        <th style="width:38px;">Sr.</th>
-        <th>Particulars / Description</th>
-        <th style="width:160px; text-align:center;">Size (cm)</th>
-        <th style="width:120px; text-align:right;">Total Amount (AED)</th>
-      </tr>`;
-
-    const items = getItems();
-    let totalAmount = 0;
-    items.forEach((item, idx) => {
-      totalAmount += item.amount;
-      const sizeCell = item.size.split(' | ').join('<br>');
-      rowsHTML += `<tr>
-        <td style="text-align:center; font-weight:bold; vertical-align:top;">${idx + 1}</td>
-        <td style="vertical-align:top;">
-          <span class="item-name">${item.itemName || 'Custom Item'}</span>
-          <span class="item-desc">${item.desc}</span>
-        </td>
-        <td style="text-align:center; vertical-align:top; font-size:11px; line-height:1.4;">
-          ${sizeCell}
-          ${item.roundedArea ? '<br><span style="font-size:10px; color:#c0392b; font-weight:bold;">Total Area: '+item.roundedArea+' m²</span>' : ''}
-        </td>
-        <td style="text-align:right; font-weight:bold; vertical-align:top;">${item.amount > 0 ? item.amount.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}</td>
-      </tr>`;
-    });
-
-    const vatAmount = totalAmount * 0.05;
-    const finalQuotationTotal = isVatApplied ? (totalAmount + vatAmount) : totalAmount;
-
-    if (isVatApplied) {
-      totalsHTML += `
-        <tr class="total-row">
-          <td colspan="2" style="border:none; background:none !important;"></td>
-          <td style="text-align:right; font-weight:bold;">Sub Total</td>
-          <td style="text-align:right;">${totalAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
-        </tr>
-        <tr class="total-row">
-          <td colspan="2" style="border:none; background:none !important;"></td>
-          <td style="text-align:right; font-weight:bold;">VAT (5%)</td>
-          <td style="text-align:right;">${vatAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
-        </tr>`;
-    }
-
+  if (isVatApplied) {
     totalsHTML += `
       <tr class="total-row">
         <td colspan="2" style="border:none; background:none !important;"></td>
-        <td style="text-align:right; font-weight:bold;">Grand Total</td>
-        <td style="text-align:right; color:#c0392b;">${finalQuotationTotal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+        <td style="text-align:right; font-weight:bold;">Sub Total</td>
+        <td style="text-align:right;">${totalAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2" style="border:none; background:none !important;"></td>
+        <td style="text-align:right; font-weight:bold;">VAT (5%)</td>
+        <td style="text-align:right;">${vatAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
       </tr>`;
+  }
 
-    // Dynamic 2D Elevation Sketch Calculation
-    const gw = parseFloat(document.getElementById('globalWidth').value) || 0;
-    const gl = parseFloat(document.getElementById('globalLength').value) || 0;
-    const gh = parseFloat(document.getElementById('globalHeight').value) || 0;
-    const schematicHTML = (hasEstimatorBeenRun && gw > 0 && gl > 0 && gh > 0) 
-      ? generateSchematicSVG(gw, gl, gh) 
-      : '';
+  totalsHTML += `
+    <tr class="total-row">
+      <td colspan="2" style="border:none; background:none !important;"></td>
+      <td style="text-align:right; font-weight:bold;">Grand Total</td>
+      <td style="text-align:right; color:#c0392b;">${finalQuotationTotal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+    </tr>`;
 
-    const page1 = `
-    <div class="quotation-page">
-      ${watermarkHTML}
-      <div style="position:relative; z-index:1;">
-        ${headerHTML}
-        <div class="client-meta-grid">
-          <div>
-            <div class="section-label">Client Details</div>
-            <div><strong>Address:</strong> ${clientAddr}</div>
-            <div><strong>Phone:</strong> &nbsp;${clientPhone}</div>
-            <div><strong>Email:</strong> &nbsp;&nbsp;${clientEmail}</div>
-          </div>
-          <div>
-            <div class="section-label">Document Info</div>
-            <div><strong>Reference No:</strong> ${ref}</div>
-            <div><strong>Date:</strong> ${date}</div>
-            ${trnRowHTML}
-            <div><strong>EMAIL:</strong> info@ahmadaluminium.ae</div>
-          </div>
+  // Dynamic 2D Elevation Sketch Calculation
+  const gw = parseFloat(document.getElementById('globalWidth').value) || 0;
+  const gl = parseFloat(document.getElementById('globalLength').value) || 0;
+  const gh = parseFloat(document.getElementById('globalHeight').value) || 0;
+  const schematicHTML = (hasEstimatorBeenRun && gw > 0 && gl > 0 && gh > 0) 
+    ? generateSchematicSVG(gw, gl, gh) 
+    : '';
+
+  const page1 = `
+  <div class="quotation-page">
+    ${watermarkHTML}
+    <div style="position:relative; z-index:1;">
+      ${headerHTML}
+      <div class="client-meta-grid">
+        <div>
+          <div class="section-label">Client Details</div>
+          <div><strong>Address:</strong> ${clientAddr}</div>
+          <div><strong>Phone:</strong> &nbsp;${clientPhone}</div>
+          <div><strong>Email:</strong> &nbsp;&nbsp;${clientEmail}</div>
         </div>
-        <div style="text-align:center; font-style:italic; font-weight:bold; font-size:14px; color:#c0392b; border-bottom:2px solid #c0392b; border-top:2px solid #c0392b; padding:8px 0; margin-bottom:15px;">
-          Subject: ${subject}
-        </div>
-
-        <table>
-          <thead>
-            ${tableHeaderHTML}
-          </thead>
-          <tbody>
-            ${rowsHTML}
-            ${totalsHTML}
-          </tbody>
-        </table>
-        ${finalQuotationTotal > 0 ? `<div class="amount-words">Grand Total: <strong>${numberToWords(finalQuotationTotal)}.</strong></div>` : ''}
-        
-        <div style="text-align:center;">
-          ${schematicHTML}
+        <div>
+          <div class="section-label">Document Info</div>
+          <div><strong>Reference No:</strong> ${ref}</div>
+          <div><strong>Date:</strong> ${date}</div>
+          ${trnRowHTML}
+          <div><strong>EMAIL:</strong> info@ahmadaluminium.ae</div>
         </div>
       </div>
-    </div>`;
+      <div style="text-align:center; font-style:italic; font-weight:bold; font-size:14px; color:#c0392b; border-bottom:2px solid #c0392b; border-top:2px solid #c0392b; padding:8px 0; margin-bottom:15px;">
+        Subject: ${subject}
+      </div>
 
-    const pageBreak = `<div class="page-break-divider">Page 2 Below</div>`;
+      <table>
+        <thead>
+          ${tableHeaderHTML}
+        </thead>
+        <tbody>
+          ${rowsHTML}
+          ${totalsHTML}
+        </tbody>
+      </table>
+      ${finalQuotationTotal > 0 ? `<div class="amount-words">Grand Total: <strong>${numberToWords(finalQuotationTotal)}.</strong></div>` : ''}
+      
+      <div style="text-align:center;">
+        ${schematicHTML}
+      </div>
+    </div>
+  </div>`;
 
-    const page2 = `
-    <div class="quotation-page">
-      ${watermarkHTML}
-      <div style="position:relative; z-index:1;">
-        <div style="font-size:11px; color:#999; text-align:right; margin-bottom:12px;">Reference No: ${ref} &nbsp;|&nbsp; Continued — Page 2</div>
+  const pageBreak = `<div class="page-break-divider">Page 2 Below</div>`;
 
-        <div class="doc-section-title">Terms &amp; Conditions:</div>
-        <ul class="doc-list">
-          ${notesListHTML}
-        </ul>
+  const page2 = `
+  <div class="quotation-page">
+    ${watermarkHTML}
+    <div style="position:relative; z-index:1;">
+      <div style="font-size:11px; color:#999; text-align:right; margin-bottom:12px;">Reference No: ${ref} &nbsp;|&nbsp; Continued — Page 2</div>
 
-        <div style="font-size:12px; margin:18px 0 10px; line-height:1.8; font-weight:bold;">
-          Hope the above Quote is Satisfactory and meets your requirements and await your confirmed LPO.<br>
-          Kindly contact the below personal for any clarifications as required
+      <div class="doc-section-title">Terms &amp; Conditions:</div>
+      <ul class="doc-list">
+        ${notesListHTML}
+      </ul>
+
+      <div style="font-size:12px; margin:18px 0 10px; line-height:1.8; font-weight:bold;">
+        Hope the above Quote is Satisfactory and meets your requirements and await your confirmed LPO.<br>
+        Kindly contact the below personal for any clarifications as required
+      </div>
+
+      <!-- SIGNATURE + STAMP ROW -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; margin-bottom:25px;">
+        <div style="font-size:12px; line-height:2.2;">
+          <div style="font-weight:bold;">Project Manager,</div>
+          <div style="font-weight:bold; font-size:13px;">Ahmad Latif</div>
+          <div>+971 58 84 90 784</div>
+        </div>
+        
+        <div style="text-align:center; z-index: 10; position: relative;">
+          ${getCircularStampSVG()}
         </div>
 
-        <!-- SIGNATURE + STAMP ROW -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; margin-bottom:25px;">
-          <div style="font-size:12px; line-height:2.2;">
-            <div style="font-weight:bold;">Project Manager,</div>
-            <div style="font-weight:bold; font-size:13px;">Ahmad Latif</div>
-            <div>+971 58 84 90 784</div>
+        <div style="text-align:center;">
+          <div style="font-size:11px; color:#666; margin-bottom:6px;">Signature:</div>
+          <div style="font-family:cursive; font-size:28px; color:#222; border-bottom:1px solid #444; padding:0 20px 4px; display:inline-block;">Ahmad</div>
+        </div>
+      </div>
+
+      <div style="border-top:2px solid #c0392b; padding-top:15px;">
+        <h3 style="color:#c0392b; font-size:14px; font-weight:bold; text-align:center; margin-bottom:12px; text-transform:uppercase; letter-spacing:2px;">Company Bank Account Details</h3>
+        <div class="bank-grid-vertical">
+          <div class="bank-card">
+            <div>
+              <strong>1) Company Account — Mashreq Bank</strong>
+              Account Title: Ahmad Aluminium and Glass Contractor LLC FZ
+              <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1021 34817 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
+            </div>
+            <div class="bank-iban">IBAN: AE36 0330 0000 1910 2134 817</div>
           </div>
           
-          <div style="text-align:center; z-index: 10; position: relative;">
-            ${getCircularStampSVG()}
+          <div class="bank-card">
+            <div>
+              <strong>2) CEO Account — Emirates NBD</strong>
+              Account Title: Ahmad Latif
+              <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 10 1580 3625 901 &nbsp;|&nbsp; Swift Code: EBILAEAD</div>
+            </div>
+            <div class="bank-iban">IBAN: AE28 0260 0010 1580 3625 901</div>
           </div>
-
-          <div style="text-align:center;">
-            <div style="font-size:11px; color:#666; margin-bottom:6px;">Signature:</div>
-            <div style="font-family:cursive; font-size:28px; color:#222; border-bottom:1px solid #444; padding:0 20px 4px; display:inline-block;">Ahmad</div>
-          </div>
-        </div>
-
-        <div style="border-top:2px solid #c0392b; padding-top:15px;">
-          <h3 style="color:#c0392b; font-size:14px; font-weight:bold; text-align:center; margin-bottom:12px; text-transform:uppercase; letter-spacing:2px;">Company Bank Account Details</h3>
-          <div class="bank-grid-vertical">
-            <div class="bank-card">
-              <div>
-                <strong>1) Company Account — Mashreq Bank</strong>
-                Account Title: Ahmad Aluminium and Glass Contractor LLC FZ
-                <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1021 34817 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
-              </div>
-              <div class="bank-iban">IBAN: AE36 0330 0000 1910 2134 817</div>
+          
+          <div class="bank-card">
+            <div>
+              <strong>3) CEO Account — Mashreq Bank</strong>
+              Account Title: Ahmad Latif
+              <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1009 20602 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
             </div>
-            
-            <div class="bank-card">
-              <div>
-                <strong>2) CEO Account — Emirates NBD</strong>
-                Account Title: Ahmad Latif
-                <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 10 1580 3625 901 &nbsp;|&nbsp; Swift Code: EBILAEAD</div>
-              </div>
-              <div class="bank-iban">IBAN: AE28 0260 0010 1580 3625 901</div>
-            </div>
-            
-            <div class="bank-card">
-              <div>
-                <strong>3) CEO Account — Mashreq Bank</strong>
-                Account Title: Ahmad Latif
-                <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1009 20602 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
-              </div>
-              <div class="bank-iban">IBAN: AE72 0330 0000 1910 0920 602</div>
-            </div>
+            <div class="bank-iban">IBAN: AE72 0330 0000 1910 0920 602</div>
           </div>
         </div>
       </div>
-    </div>`;
+    </div>
+  </div>`;
 
-    document.getElementById('quotationDoc').innerHTML = page1 + pageBreak + page2;
-  }
+  document.getElementById('quotationDoc').innerHTML = page1 + pageBreak + page2;
 }
 
 // ─── INITIALIZATION ON LOAD ───────────────────────────────────────────────
@@ -1376,7 +1325,6 @@ window.addEventListener('load', () => {
   setTodayDate();
   loadDraft();
   loadSpreadsheetLibrary();
-  updateFormVisibility();
   fetchRecentQuotes();
 });
 </script>
