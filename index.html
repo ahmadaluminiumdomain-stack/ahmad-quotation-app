@@ -86,7 +86,7 @@
   @media print {
     @page {
       size: A4;
-      margin: 0 !important; /* Strip default URL titles & footers from PDF outputs */
+      margin: 0 !important; /* Strip default browser headers and footers from printing */
     }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .app-header, .form-panel, .preview-toolbar, .page-break-divider { display: none !important; }
@@ -98,7 +98,7 @@
       width: 100% !important;
       height: auto !important;
       min-height: 297mm !important;
-      padding: 20mm 15mm 15mm 15mm !important; /* Boundary margin to protect alignment on print margins */
+      padding: 20mm 15mm 15mm 15mm !important; /* Prevent cutoffs during desktop printouts */
       margin: 0 !important;
       page-break-after: always !important;
     }
@@ -230,9 +230,11 @@
 
 <script>
 
-// Core Spreadsheet & Apps Script Targets
-const DB_URL = "https://script.google.com/macros/s/AKfycbwnXM_3u_u_q5gCjmG9ZeA4nBfeaEwBqxbZeKLuXUj4tey_sGMVhgPuurl8nHx5RTvEag/exec";
-const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNizzL9Im6qMmjEcuOhH5404-GMIJDXqSuGw3xrZQARxk1sJhTIkVqT8C2AwvchDHbysmB-oftQ3Sk/pub?output=csv";
+// Core Database Script Target and dynamic Sheet Exporter
+const DB_URL = "https://script.google.com/macros/s/AKfycbz7vTFZevifbAMfMHH7XxG7cI3Zgv_uCnLgK1DKfdhCQ3LF__JC4HIH8wvTH5BKhL59Uw/exec";
+
+// Google Sheets Exporter URL using edit mode ID to bypass dynamic blocks
+const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1OympSCR6CIcQ0re9kdGRf3noTUfSw2Tgvm-oPRoHD10/gviz/tq?tqx=out:csv";
 
 let parsedLibrary = {};
 let hasEstimatorBeenRun = false;
@@ -271,7 +273,7 @@ function setTodayDate() {
 function loadSpreadsheetLibrary() {
   fetch(SPREADSHEET_CSV_URL)
     .then(res => {
-      if (!res.ok) throw new Error("Connection Blocked");
+      if (!res.ok) throw new Error("CORS or Redirect Blocked");
       return res.text();
     })
     .then(csvText => {
@@ -281,7 +283,7 @@ function loadSpreadsheetLibrary() {
       generateQuotation();
     })
     .catch(err => {
-      console.warn("Spreadsheet restricted (Local file/CORS protection active). Loading local database fallback.", err);
+      console.warn("Spreadsheet access restricted. Executing local backup library fallback.", err);
       parsedLibrary = {
         "Glass Room": [
           { name: "Structure", desc: ITEM_LIBRARY["Structure"].desc, rate: 1200, formula: "W*L" },
@@ -337,7 +339,7 @@ function processLibraryCSV(csvText) {
     
     const colIndex = {
       category: firstRow.indexOf('category'),
-      itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('name') || h.includes('particular')),
+      itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('particular') || h.includes('name')),
       description: firstRow.findIndex(h => h.includes('description') || h.includes('desc') || h.includes('particulars')),
       price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost')),
       formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calc'))
@@ -346,7 +348,7 @@ function processLibraryCSV(csvText) {
     const idxCat = colIndex.category;
     const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
     
-    // Explicit column tracking overrides to prevent Name/Description from merging
+    // Safety column index offset prevents merging name & description elements
     const idxDesc = colIndex.description !== -1 ? colIndex.description : (idxItem === 0 ? 1 : 2);
     const idxPrice = colIndex.price !== -1 ? colIndex.price : (idxDesc === 1 ? 2 : 3);
     const idxForm = colIndex.formula !== -1 ? colIndex.formula : (idxPrice === 2 ? 3 : 4);
@@ -362,7 +364,7 @@ function processLibraryCSV(csvText) {
       const colC = row[2] ? row[2].trim() : "";
       const colD = row[3] ? row[3].trim() : "";
 
-      // Scrape category partitions
+      // Check section-based Category layouts
       if (colA && !colB && !colC && !colD) {
         activeCategory = colA;
         if (!tempLib[activeCategory]) {
@@ -400,7 +402,7 @@ function processLibraryCSV(csvText) {
     }
     return tempLib;
   } catch (e) {
-    console.error("CSV Processing breakdown. Bypassing safely.", e);
+    console.error("Column mapping failure. Falling back.", e);
     return {};
   }
 }
@@ -512,7 +514,6 @@ function loadCategoryItems(catName) {
 }
 
 // ─── ADD ITEM ────────────────────────────────────────────────────────────────
-let itemCount = 0;
 function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
   itemCount++;
   const id = itemCount;
@@ -533,7 +534,7 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <textarea id="desc_${id}" rows="2" style="width:100%;background:#16213e;border:1px solid #1a4a80;color:#eee;padding:6px 8px;border-radius:4px;font-size:11px;resize:vertical;" placeholder="Supply & Installation of...">${prefillDesc}</textarea>
       </div>
       
-      <!-- Custom Dimensions block (Width, Length, Height, Quantity) -->
+      <!-- Custom Dimensions block (W, L, H, Qty rows) -->
       <div class="full" style="display:flex; align-items:center; gap:8px; margin-top:5px; margin-bottom:5px;">
         <input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})" style="width:16px; height:16px; cursor:pointer;" ${forceCustomSizes ? 'checked' : ''}>
         <label for="toggle_size_${id}" style="font-weight:bold; color:#1abc9c; cursor:pointer; margin:0; text-transform:none; font-size:12px;">📐 Custom Sizes / Measurements (Up to 5 sets)</label>
