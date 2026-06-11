@@ -86,7 +86,7 @@
   @media print {
     @page {
       size: A4;
-      margin: 0 !important; /* Force browser to strip automatic header and filepath text */
+      margin: 0 !important; /* Strips browser headers and footers from printing layout */
     }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .app-header, .form-panel, .preview-toolbar, .page-break-divider { display: none !important; }
@@ -97,8 +97,8 @@
       border: none !important;
       width: 100% !important;
       height: auto !important;
-      min-height: 297mm !important; /* Standard A4 size boundary scale */
-      padding: 20mm 15mm 15mm 15mm !important; /* Margins to prevent print cuts */
+      min-height: 297mm !important; /* Scale to fit A4 */
+      padding: 20mm 15mm 15mm 15mm !important; /* Protect edge alignments */
       margin: 0 !important;
       page-break-after: always !important;
     }
@@ -109,7 +109,7 @@
 </head>
 <body>
 
-<!-- Dynamic dropdown suggestions -->
+<!-- Suggestions dropdown linked to line inputs -->
 <datalist id="itemNamesDatalist"></datalist>
 
 <div class="app-header">
@@ -196,16 +196,6 @@
       </select>
     </div>
 
-    <!-- NOTES PRESET (Hides/Shows on preview depending on Quotation/Invoice format) -->
-    <div class="form-group" style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border: 1px solid #1a4a80;">
-      <label style="color: #ffb4a2; font-weight: bold; font-size: 11px;">📝 Document Terms & Notes</label>
-      <select id="notesPreset" onchange="onNotesPresetChange(this.value)" style="margin-bottom: 6px;">
-        <option value="fixed">Standard Terms & Conditions (Default)</option>
-        <option value="custom">Custom Notes (Type below)</option>
-      </select>
-      <textarea id="customNotesText" rows="4" style="background: #0f3460; font-size: 11px;" placeholder="Type custom invoice notes / terms here..."></textarea>
-    </div>
-
     <!-- PARAMETRIC SMART ESTIMATOR PANEL (In Centimeters) -->
     <div class="form-group" style="background: rgba(22, 160, 133, 0.15); padding: 12px; border-radius: 6px; border: 1px solid #1abc9c; margin-top: 15px; margin-bottom: 15px;">
       <label style="color: #1abc9c; font-weight: bold; font-size: 11px; margin-bottom: 8px; display: block; letter-spacing: 1px;">📐 Smart Room Estimator (In Centimeters)</label>
@@ -250,7 +240,7 @@
 
 <script>
 
-// Database URLs and Live CSV Export Endpoint
+// Database API targets
 const DB_URL = "https://script.google.com/macros/s/AKfycbz7vTFZevifbAMfMHH7XxG7cI3Zgv_uCnLgK1DKfdhCQ3LF__JC4HIH8wvTH5BKhL59Uw/exec";
 const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNizzL9Im6qMmjEcuOhH5404-GMIJDXqSuGw3xrZQARxk1sJhTIkVqT8C2AwvchDHbysmB-oftQ3Sk/pub?output=csv";
 
@@ -348,28 +338,49 @@ function processLibraryCSV(csvText) {
 
   const tempLib = {};
   
-  // Scrapes first row headers dynamically to identify custom columns
+  // Scrapes first row headers dynamically to identify column maps
   const firstRow = rows[0].map(h => h.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
   
   const colIndex = {
-    category: firstRow.findIndex(h => h.includes('category') || h.includes('worktype')),
-    itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('particular')),
-    description: firstRow.findIndex(h => h.includes('description') || h.includes('details') || h.includes('desc')),
-    price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost')),
-    formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calculation') || h.includes('calc'))
+    category: firstRow.findIndex(h => h.includes('category') || h.includes('worktype') || h.includes('work')),
+    itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('particular') || h.includes('name')),
+    description: firstRow.findIndex(h => h.includes('description') || h.includes('details') || h.includes('desc') || h.includes('particulars')),
+    price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost') || h.includes('m2')),
+    formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calculation') || h.includes('calc') || h.includes('type'))
   };
 
-  const idxCat = colIndex.category !== -1 ? colIndex.category : 0;
-  const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 1;
-  const idxDesc = colIndex.description !== -1 ? colIndex.description : 2;
-  const idxPrice = colIndex.price !== -1 ? colIndex.price : 3;
-  const idxForm = colIndex.formula !== -1 ? colIndex.formula : 4;
+  const idxCat = colIndex.category;
+  const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
+  const idxDesc = colIndex.description !== -1 ? colIndex.description : 1;
+  const idxPrice = colIndex.price !== -1 ? colIndex.price : 2;
+  const idxForm = colIndex.formula !== -1 ? colIndex.formula : 3;
+
+  let activeCategory = "Custom";
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length <= Math.max(idxCat, idxItem)) continue;
+    if (!row || row.length === 0) continue;
 
-    const category = row[idxCat] ? row[idxCat].trim() : "Custom";
+    const colA = row[0] ? row[0].trim() : "";
+    const colB = row[1] ? row[1].trim() : "";
+    const colC = row[2] ? row[2].trim() : "";
+    const colD = row[3] ? row[3].trim() : "";
+
+    // Parse category divider rows if they exist in Column A
+    if (colA && !colB && !colC && !colD) {
+      activeCategory = colA;
+      if (!tempLib[activeCategory]) {
+        tempLib[activeCategory] = [];
+      }
+      continue;
+    }
+
+    let category = activeCategory;
+    if (idxCat !== -1 && row[idxCat]) {
+      const rowCatVal = row[idxCat].trim();
+      if (rowCatVal) category = rowCatVal;
+    }
+
     const name = row[idxItem] ? row[idxItem].trim() : "";
     const desc = row[idxDesc] ? row[idxDesc].trim() : "";
     
@@ -397,7 +408,6 @@ function processLibraryCSV(csvText) {
 function rebuildFlatItemLibrary() {
   flatItemLibrary = {};
   
-  // Load local backups first
   Object.keys(ITEM_LIBRARY).forEach(key => {
     flatItemLibrary[key] = {
       desc: ITEM_LIBRARY[key].desc,
@@ -406,7 +416,6 @@ function rebuildFlatItemLibrary() {
     };
   });
 
-  // Load spreadsheet data overwriting local sets if names overlap
   Object.keys(parsedLibrary).forEach(cat => {
     parsedLibrary[cat].forEach(item => {
       flatItemLibrary[item.name] = {
@@ -417,7 +426,6 @@ function rebuildFlatItemLibrary() {
     });
   });
 
-  // Re-write dropdown datalist option arrays
   const datalist = document.getElementById('itemNamesDatalist');
   if (datalist) {
     datalist.innerHTML = '';
@@ -520,6 +528,7 @@ function evaluateFormula(formulaStr, w, l, h) {
 }
 
 // ─── ADD ITEM ────────────────────────────────────────────────────────────────
+let itemCount = 0;
 function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
   itemCount++;
   const id = itemCount;
@@ -613,7 +622,7 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
   document.getElementById('itemsContainer').appendChild(div);
 }
 
-// Dynamic Autocomplete and autofill selection
+// Autofills lines on drop selection matches
 function onItemNameInput(id, val) {
   const matched = flatItemLibrary[val.trim()];
   if (matched) {
@@ -913,8 +922,6 @@ function saveDraft() {
     subject: document.getElementById('subject').value,
     docMode: document.getElementById('documentMode').value,
     vatToggle: document.getElementById('vatToggle').value,
-    notesPreset: document.getElementById('notesPreset').value,
-    customNotesText: document.getElementById('customNotesText').value,
     items: serializeItems()
   };
   localStorage.setItem('quotationDraft', JSON.stringify(draft));
@@ -922,10 +929,6 @@ function saveDraft() {
 
 function loadDraft() {
   const raw = localStorage.getItem('quotationDraft');
-  
-  // Set default fallback values before executing load checks
-  document.getElementById('customNotesText').value = DEFAULT_TERMS;
-  document.getElementById('notesPreset').value = "fixed";
 
   if (raw) {
     try {
@@ -938,9 +941,6 @@ function loadDraft() {
       document.getElementById('subject').value = draft.subject || '';
       document.getElementById('documentMode').value = draft.docMode || 'Quotation';
       document.getElementById('vatToggle').value = draft.vatToggle || 'no';
-      
-      if (draft.notesPreset) document.getElementById('notesPreset').value = draft.notesPreset;
-      if (draft.customNotesText) document.getElementById('customNotesText').value = draft.customNotesText;
 
       if (draft.items && draft.items.length > 0) {
         deserializeItems(draft.items);
@@ -965,12 +965,9 @@ function clearDraft() {
     document.getElementById('subject').value = '';
     document.getElementById('documentMode').value = 'Quotation';
     document.getElementById('vatToggle').value = 'no';
-    document.getElementById('notesPreset').value = 'fixed';
-    document.getElementById('customNotesText').value = DEFAULT_TERMS;
     document.getElementById('itemsContainer').innerHTML = '';
     hasEstimatorBeenRun = false;
     
-    // Auto-populates today's current date
     setTodayDate();
     
     if (allFetchedQuotes.length > 0) {
@@ -982,14 +979,6 @@ function clearDraft() {
     addItem();
     saveDraft();
   }
-}
-
-function onNotesPresetChange(preset) {
-  if (preset === 'fixed') {
-    document.getElementById('customNotesText').value = DEFAULT_TERMS;
-  }
-  generateQuotation();
-  triggerSilentCloudSave();
 }
 
 document.getElementById('formPanel').addEventListener('input', triggerSilentCloudSave);
@@ -1213,7 +1202,6 @@ function formatDate(dateStr) {
 function generateQuotation() {
   const ref = document.getElementById('quotRef').value || 'AA-2026-201';
   
-  // Set window title to quote reference for clean PDF save-naming
   document.title = ref;
 
   const date = formatDate(document.getElementById('quotDate').value);
@@ -1225,15 +1213,13 @@ function generateQuotation() {
   const isVatApplied = document.getElementById('vatToggle').value === 'yes';
   const items = getItems();
 
-  const rawNotesVal = document.getElementById('customNotesText').value || '';
-  const notesListHTML = rawNotesVal.split('\n').map(term => {
+  const notesListHTML = DEFAULT_TERMS.split('\n').map(term => {
     if(!term.trim()) return '';
     return `<li>${term.replace(/^•\s*/, '')}</li>`;
   }).join('');
 
   if (items.length === 0) { alert('Please add at least one item!'); return; }
 
-  // 2D Elevation Sketch Variables
   const gw = parseFloat(document.getElementById('globalWidth').value) || 0;
   const gl = parseFloat(document.getElementById('globalLength').value) || 0;
   const gh = parseFloat(document.getElementById('globalHeight').value) || 0;
@@ -1271,7 +1257,6 @@ function generateQuotation() {
     ? `<div style="font-size:12px; margin-top:2px;"><strong>TRN Number:</strong> 100452310200003</div>` 
     : '';
 
-  // Background rotatory grey watermark
   const watermarkHTML = `
     <div class="watermark-container">
       <div class="watermark-text">AHMAD ALUMINIUM</div>
@@ -1282,7 +1267,7 @@ function generateQuotation() {
   let totalsHTML = '';
 
   if (isInvoice) {
-    // ─── TAX INVOICE FORMAT (No custom terms, no drawings, stamp and signature only) ───
+    // ─── TAX INVOICE FORMAT (No terms, no schematics, stamp and signature only) ───
     tableHeaderHTML = `
       <tr>
         <th style="width:38px;">Sr.</th>
