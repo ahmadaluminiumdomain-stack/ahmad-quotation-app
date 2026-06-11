@@ -31,7 +31,7 @@
   /* Multi-size sub-grid inside the form items (Width, Length, Height, Quantity) */
   .sizes-container { background: #0f3460; padding: 8px; border-radius: 4px; margin-top: 4px; display: none; }
   .sizes-title { font-size: 10px; color: #ffb4a2; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }
-  .size-row { display: grid; grid-template-columns: 20px 1fr 10px 1fr 10px 1fr 20px 1fr; align-items: center; gap: 4px; margin-bottom: 6px; font-size: 11px; color: #aaa; }
+  .size-row { display: grid; grid-template-columns: 20px 1fr 10px 1fr 10px 1fr 25px 1fr; align-items: center; gap: 4px; margin-bottom: 6px; font-size: 11px; color: #aaa; }
   .size-row input { text-align: center; padding: 4px 2px !important; }
 
   .calc-result { background: #0f3460; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #4ecca3; margin-top: 6px; line-height: 1.4; }
@@ -86,7 +86,7 @@
   @media print {
     @page {
       size: A4;
-      margin: 0 !important; /* Strip default browser headers & URLs */
+      margin: 0 !important; /* Strip browser URL headers & footers from print layout */
     }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .app-header, .form-panel, .preview-toolbar, .page-break-divider { display: none !important; }
@@ -98,7 +98,7 @@
       width: 100% !important;
       height: auto !important;
       min-height: 297mm !important;
-      padding: 20mm 15mm 15mm 15mm !important; /* Margins to protect structural contents from clipping */
+      padding: 20mm 15mm 15mm 15mm !important; /* Safety print boundary offset */
       margin: 0 !important;
       page-break-after: always !important;
     }
@@ -323,7 +323,7 @@ function setTodayDate() {
   }
 }
 
-// ─── FETCH & PARSE SPREADSHEET DATA (DYNAMIC HEADER MAPPING) ───────────────
+// ─── FETCH & PARSE SPREADSHEET DATA (DYNAMIC COLUMN MATCHING) ───────────────
 function loadSpreadsheetLibrary() {
   fetch(SPREADSHEET_CSV_URL)
     .then(res => res.text())
@@ -397,9 +397,11 @@ function processLibraryCSV(csvText) {
 
   const idxCat = colIndex.category;
   const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
-  const idxDesc = colIndex.description !== -1 ? colIndex.description : 1;
-  const idxPrice = colIndex.price !== -1 ? colIndex.price : 2;
-  const idxForm = colIndex.formula !== -1 ? colIndex.formula : 3;
+  
+  // Make sure idxDesc, idxPrice and idxForm are offset safely so they do not overlap itemName
+  const idxDesc = colIndex.description !== -1 ? colIndex.description : (idxItem === 0 ? 1 : 2);
+  const idxPrice = colIndex.price !== -1 ? colIndex.price : (idxDesc === 1 ? 2 : 3);
+  const idxForm = colIndex.formula !== -1 ? colIndex.formula : (idxPrice === 2 ? 3 : 4);
 
   let activeCategory = "Custom";
 
@@ -412,7 +414,7 @@ function processLibraryCSV(csvText) {
     const colC = row[2] ? row[2].trim() : "";
     const colD = row[3] ? row[3].trim() : "";
 
-    // Parse category spacer rows
+    // Parse category divider rows
     if (colA && !colB && !colC && !colD) {
       activeCategory = colA;
       if (!tempLib[activeCategory]) {
@@ -558,6 +560,7 @@ function loadCategoryItems(catName) {
 }
 
 // ─── ADD ITEM ────────────────────────────────────────────────────────────────
+let itemCount = 0;
 function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
   itemCount++;
   const id = itemCount;
@@ -578,7 +581,7 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <textarea id="desc_${id}" rows="2" style="width:100%;background:#16213e;border:1px solid #1a4a80;color:#eee;padding:6px 8px;border-radius:4px;font-size:11px;resize:vertical;" placeholder="Supply & Installation of...">${prefillDesc}</textarea>
       </div>
       
-      <!-- Width, Length, Height, and Quantity Toggle -->
+      <!-- Custom Dimensions block (W, L, H, Qty across 5 rows) -->
       <div class="full" style="display:flex; align-items:center; gap:8px; margin-top:5px; margin-bottom:5px;">
         <input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})" style="width:16px; height:16px; cursor:pointer;" ${forceCustomSizes ? 'checked' : ''}>
         <label for="toggle_size_${id}" style="font-weight:bold; color:#1abc9c; cursor:pointer; margin:0; text-transform:none; font-size:12px;">📐 Custom Sizes / Measurements (Up to 5 sets)</label>
@@ -589,7 +592,9 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <div class="size-row">
           <span>#1</span>
           <input type="number" id="w1_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="l1_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="h1_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
           <span>Qty</span>
           <input type="number" id="qty1_${id}" value="1" oninput="calcArea(${id})">
@@ -597,7 +602,9 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <div class="size-row">
           <span>#2</span>
           <input type="number" id="w2_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="l2_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="h2_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
           <span>Qty</span>
           <input type="number" id="qty2_${id}" oninput="calcArea(${id})">
@@ -605,7 +612,9 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <div class="size-row">
           <span>#3</span>
           <input type="number" id="w3_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="l3_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="h3_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
           <span>Qty</span>
           <input type="number" id="qty3_${id}" oninput="calcArea(${id})">
@@ -613,7 +622,9 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <div class="size-row">
           <span>#4</span>
           <input type="number" id="w4_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="l4_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="h4_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
           <span>Qty</span>
           <input type="number" id="qty4_${id}" oninput="calcArea(${id})">
@@ -621,7 +632,9 @@ function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
         <div class="size-row">
           <span>#5</span>
           <input type="number" id="w5_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="l5_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <span>×</span>
           <input type="number" id="h5_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
           <span>Qty</span>
           <input type="number" id="qty5_${id}" oninput="calcArea(${id})">
@@ -728,10 +741,15 @@ function applySmartEstimator() {
 }
 
 function setDimensionRow(id, step, w, l, h, qty) {
-  document.getElementById(`w${step}_${id}`).value = Math.round(w) || '';
-  document.getElementById(`l${step}_${id}`).value = Math.round(l) || '';
-  document.getElementById(`h${step}_${id}`).value = Math.round(h) || '';
-  document.getElementById(`qty${step}_${id}`).value = qty || 1;
+  const wEl = document.getElementById(`w${step}_${id}`);
+  const lEl = document.getElementById(`l${step}_${id}`);
+  const hEl = document.getElementById(`h${step}_${id}`);
+  const qEl = document.getElementById(`qty${step}_${id}`);
+
+  if (wEl) wEl.value = w > 0 ? Math.round(w) : '';
+  if (lEl) lEl.value = l > 0 ? Math.round(l) : '';
+  if (hEl) hEl.value = h > 0 ? Math.round(h) : '';
+  if (qEl) qEl.value = qty || 1;
   calcArea(id);
 }
 
@@ -901,160 +919,93 @@ function getItems() {
   return items;
 }
 
-// ─── LOCAL STORAGE DRAFTS ─────────────────────────────────────────────────
-function saveDraft() {
-  const draft = {
-    ref: document.getElementById('quotRef').value,
-    date: document.getElementById('quotDate').value,
-    clientAddr: document.getElementById('clientAddr').value,
-    clientPhone: document.getElementById('clientPhone').value,
-    clientEmail: document.getElementById('clientEmail').value,
-    subject: document.getElementById('subject').value,
-    docMode: document.getElementById('documentMode').value,
-    vatToggle: document.getElementById('vatToggle').value,
-    
-    // Save invoice manual inputs
-    invParts: [
-      document.getElementById('invPart1').value,
-      document.getElementById('invPart2').value,
-      document.getElementById('invPart3').value,
-      document.getElementById('invPart4').value
-    ],
-    invAmts: [
-      document.getElementById('invAmt1').value,
-      document.getElementById('invAmt2').value,
-      document.getElementById('invAmt3').value,
-      document.getElementById('invAmt4').value
-    ],
-    items: serializeItems()
-  };
-  localStorage.setItem('quotationDraft', JSON.stringify(draft));
+// ─── LOCAL STORAGE SERIALIZATION ───────────────────────────────────────────
+function serializeItems() {
+  const mode = document.getElementById('documentMode').value;
+  if (mode === 'Invoice') {
+    const invItems = [];
+    for (let i = 1; i <= 4; i++) {
+      invItems.push({
+        particular: document.getElementById('invPart' + i).value,
+        amount: document.getElementById('invAmt' + i).value
+      });
+    }
+    return { type: 'Invoice', data: invItems };
+  } else {
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const id = row.id.replace('item_', '');
+      const name = document.getElementById('name_' + id).value;
+      const desc = document.getElementById('desc_' + id).value;
+      const priceType = document.getElementById('priceType_' + id).value;
+      const rateInput = document.getElementById('rateInput_' + id).value;
+      const sizesChecked = document.getElementById('toggle_size_' + id).checked;
+      const sizes = [];
+      if (sizesChecked) {
+        for (let s = 1; s <= 5; s++) {
+          sizes.push({
+            w: document.getElementById(`w${s}_${id}`).value,
+            l: document.getElementById(`l${s}_${id}`).value,
+            h: document.getElementById(`h${s}_${id}`).value,
+            qty: document.getElementById(`qty${s}_${id}`).value
+          });
+        }
+      }
+      items.push({ name, desc, priceType, rateInput, sizesChecked, sizes });
+    });
+    return { type: 'Quotation', data: items };
+  }
 }
 
-function loadDraft() {
-  const raw = localStorage.getItem('quotationDraft');
+function deserializeItems(serialized) {
+  let mode = 'Quotation';
+  let data = [];
+  if (serialized && serialized.type) {
+    mode = serialized.type;
+    data = serialized.data;
+  } else if (Array.isArray(serialized)) {
+    data = serialized;
+  }
 
-  if (raw) {
-    try {
-      const draft = JSON.parse(raw);
-      if (draft.ref) document.getElementById('quotRef').value = draft.ref;
-      if (draft.date) document.getElementById('quotDate').value = draft.date;
-      document.getElementById('clientAddr').value = draft.clientAddr || '';
-      document.getElementById('clientPhone').value = draft.clientPhone || '';
-      document.getElementById('clientEmail').value = draft.clientEmail || '';
-      document.getElementById('subject').value = draft.subject || '';
-      document.getElementById('documentMode').value = draft.docMode || 'Quotation';
-      document.getElementById('vatToggle').value = draft.vatToggle || 'no';
+  document.getElementById('documentMode').value = mode;
+  updateFormVisibility();
 
-      // Restore custom invoice parameters
-      if (draft.invParts) {
-        document.getElementById('invPart1').value = draft.invParts[0] || '';
-        document.getElementById('invPart2').value = draft.invParts[1] || '';
-        document.getElementById('invPart3').value = draft.invParts[2] || '';
-        document.getElementById('invPart4').value = draft.invParts[3] || '';
-      }
-      if (draft.invAmts) {
-        document.getElementById('invAmt1').value = draft.invAmts[0] || '';
-        document.getElementById('invAmt2').value = draft.invAmts[1] || '';
-        document.getElementById('invAmt3').value = draft.invAmts[2] || '';
-        document.getElementById('invAmt4').value = draft.invAmts[3] || '';
-      }
-
-      if (draft.items && draft.items.length > 0) {
-        deserializeItems(draft.items);
-      } else {
-        addItem();
-      }
-    } catch (e) {
-      console.error(e);
-      addItem();
+  if (mode === 'Invoice') {
+    for (let i = 1; i <= 4; i++) {
+      const item = data[i - 1] || {};
+      document.getElementById('invPart' + i).value = item.particular || '';
+      document.getElementById('invAmt' + i).value = item.amount || '';
     }
   } else {
-    addItem();
+    document.getElementById('itemsContainer').innerHTML = '';
+    itemCount = 0;
+    data.forEach(item => {
+      addItem(item.name, item.desc, item.sizesChecked);
+      const id = itemCount;
+      document.getElementById('priceType_' + id).value = item.priceType || 'Standard';
+      onPriceTypeChange(id, item.priceType || 'Standard');
+      document.getElementById('rateInput_' + id).value = item.rateInput || '';
+      if (item.sizes && item.sizesChecked) {
+        item.sizes.forEach((sz, idx) => {
+          const s = idx + 1;
+          document.getElementById(`w${s}_${id}`).value = sz.w || '';
+          document.getElementById(`l${s}_${id}`).value = sz.l || '';
+          document.getElementById(`h${s}_${id}`).value = sz.h || '';
+          document.getElementById(`qty${s}_${id}`).value = sz.qty || '';
+        });
+      }
+      calcArea(id);
+    });
   }
+  generateQuotation();
 }
 
-// ─── CLOUD SYNC DIRECTORY ──────────────────────────────────────────────────
-let allFetchedQuotes = [];
-function fetchRecentQuotes() {
-  const listEl = document.getElementById('recentQuotesList');
-  listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">Connecting...</div>';
-  fetch(DB_URL)
-  .then(res => res.json())
-  .then(quotes => {
-    allFetchedQuotes = quotes;
-    renderQuotesList(quotes);
-    determineNextRefAndAssign(quotes);
-  })
-  .catch(err => {
-    console.error(err);
-    listEl.innerHTML = '<div style="text-align: center; color: #ffb4a2; padding: 10px;">Connection issue</div>';
-  });
-}
-
-function fetchRecentQuotesSilently() {
-  fetch(DB_URL)
-  .then(res => res.json())
-  .then(quotes => {
-    allFetchedQuotes = quotes;
-    renderQuotesList(quotes);
-  })
-  .catch(err => console.error(err));
-}
-
-function renderQuotesList(quotes) {
-  const listEl = document.getElementById('recentQuotesList');
-  if (!quotes || quotes.length === 0) {
-    listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">No entries</div>';
-    return;
-  }
-  listEl.innerHTML = '';
-  quotes.forEach(q => {
-    const item = document.createElement('div');
-    item.style.padding = '6px';
-    item.style.borderBottom = '1px solid #1a4a80';
-    item.style.cursor = 'pointer';
-    item.onmouseover = () => item.style.background = '#16213e';
-    item.onmouseout = () => item.style.background = 'none';
-    item.onclick = () => loadSelectedQuote(q.ref);
-    item.innerHTML = `
-      <div style="display:flex; justify-content:space-between; font-weight:bold;">
-        <span style="color:#e74c3c;">${q.ref}</span>
-        <span style="font-size:10px; color:#4ecca3;">${q.date || ''}</span>
-      </div>
-      <div style="font-size:10px; color:#aaa; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-        ${q.clientAddr || ''} - ${q.subject || ''}
-      </div>
-    `;
-    listEl.appendChild(item);
-  });
-}
-
-function filterRecentQuotes() {
-  const query = document.getElementById('searchQuotes').value.toLowerCase();
-  const filtered = allFetchedQuotes.filter(q => {
-    return (q.ref && q.ref.toLowerCase().includes(query)) ||
-           (q.clientAddr && q.clientAddr.toLowerCase().includes(query)) ||
-           (q.subject && q.subject.toLowerCase().includes(query));
-  });
-  renderQuotesList(filtered);
-}
-
-function loadSelectedQuote(ref) {
-  const found = allFetchedQuotes.find(q => q.ref === ref);
-  if (found) {
-    document.getElementById('quotRef').value = found.ref;
-    document.getElementById('quotDate').value = found.date;
-    document.getElementById('clientAddr').value = found.clientAddr;
-    document.getElementById('clientPhone').value = found.clientPhone;
-    document.getElementById('clientEmail').value = found.clientEmail;
-    document.getElementById('subject').value = found.subject;
-    if (found.itemsJson) {
-      const itemsData = JSON.parse(found.itemsJson);
-      deserializeItems(itemsData);
-    }
-    generateQuotation();
-  }
+function downloadPDF() {
+  const s = document.createElement('style');
+  s.textContent = '@media print { body{background:white!important;} .app-header,.form-panel,.preview-toolbar{display:none!important;} .container{display:block!important;} .preview-panel{padding:0!important;background:white!important;} .quotation-page{box-shadow:none!important;width:100%!important;} .page-break-divider{display:none!important;} }';
+  document.head.appendChild(s);
+  window.print();
+  setTimeout(() => document.head.removeChild(s), 1000);
 }
 
 // ─── DOCUMENT LAYOUT GENERATOR ──────────────────────────────────────────────
@@ -1414,63 +1365,6 @@ function generateQuotation() {
 
     document.getElementById('quotationDoc').innerHTML = page1 + pageBreak + page2;
   }
-}
-
-// ─── LOCAL STORAGE SERIALIZATION ───────────────────────────────────────────
-function serializeItems() {
-  const items = [];
-  document.querySelectorAll('.item-row').forEach(row => {
-    const id = row.id.replace('item_', '');
-    const name = document.getElementById('name_' + id).value;
-    const desc = document.getElementById('desc_' + id).value;
-    const priceType = document.getElementById('priceType_' + id).value;
-    const rateInput = document.getElementById('rateInput_' + id).value;
-    const sizesChecked = document.getElementById('toggle_size_' + id).checked;
-    const sizes = [];
-    if (sizesChecked) {
-      for (let s = 1; s <= 5; s++) {
-        sizes.push({
-          w: document.getElementById(`w${s}_${id}`).value,
-          l: document.getElementById(`l${s}_${id}`).value,
-          h: document.getElementById(`h${s}_${id}`).value,
-          qty: document.getElementById(`qty${s}_${id}`).value
-        });
-      }
-    }
-    items.push({ name, desc, priceType, rateInput, sizesChecked, sizes });
-  });
-  return items;
-}
-
-function deserializeItems(itemsData) {
-  document.getElementById('itemsContainer').innerHTML = '';
-  itemCount = 0;
-  itemsData.forEach(item => {
-    addItem(item.name, item.desc, item.sizesChecked);
-    const id = itemCount;
-    document.getElementById('priceType_' + id).value = item.priceType || 'Standard';
-    onPriceTypeChange(id, item.priceType || 'Standard');
-    document.getElementById('rateInput_' + id).value = item.rateInput || '';
-    if (item.sizes && item.sizesChecked) {
-      item.sizes.forEach((sz, idx) => {
-        const s = idx + 1;
-        document.getElementById(`w${s}_${id}`).value = sz.w || '';
-        document.getElementById(`l${s}_${id}`).value = sz.l || '';
-        document.getElementById(`h${s}_${id}`).value = sz.h || '';
-        document.getElementById(`qty${s}_${id}`).value = sz.qty || '';
-      });
-    }
-    calcArea(id);
-  });
-}
-
-// ─── PDF PRINT PREPARATION ───────────────────────────────────────────────
-function downloadPDF() {
-  const s = document.createElement('style');
-  s.textContent = '@media print { body{background:white!important;} .app-header,.form-panel,.preview-toolbar{display:none!important;} .container{display:block!important;} .preview-panel{padding:0!important;background:white!important;} .quotation-page{box-shadow:none!important;width:100%!important;} .page-break-divider{display:none!important;} }';
-  document.head.appendChild(s);
-  window.print();
-  setTimeout(() => document.head.removeChild(s), 1000);
 }
 
 // ─── INITIALIZATION ON LOAD ───────────────────────────────────────────────
