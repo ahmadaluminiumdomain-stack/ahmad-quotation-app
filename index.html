@@ -317,4 +317,1174 @@ function setTodayDate() {
   if (dateInput && !dateInput.value) {
     const today = new Date();
     const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+}
+
+// ─── FETCH & PARSE SPREADSHEET DATA (DYNAMIC HEADER MAPPING) ───────────────
+function loadSpreadsheetLibrary() {
+  fetch(SPREADSHEET_CSV_URL)
+    .then(res => res.text())
+    .then(csvText => {
+      parsedLibrary = processLibraryCSV(csvText);
+      populateCategorySelector(parsedLibrary);
+      rebuildFlatItemLibrary();
+    })
+    .catch(err => {
+      console.warn("Spreadsheet connection offline. Using local layout fallback.", err);
+      parsedLibrary = {
+        "Glass Room": [
+          { name: "Structure", desc: ITEM_LIBRARY["Structure"].desc, rate: 1200, formula: "W*L" },
+          { name: "Swing Door", desc: ITEM_LIBRARY["Swing Door"].desc, rate: 2500, formula: "fixed" },
+          { name: "3 Side Closing with Cement Board & Gypsum", desc: ITEM_LIBRARY["3 Side Closing with Cement Board & Gypsum"].desc, rate: 400, formula: "((2*L)+W)*H - 2" },
+          { name: "Sandwich Panel Roof", desc: ITEM_LIBRARY["Sandwich Panel Roof"].desc, rate: 450, formula: "W*L" },
+          { name: "Gypsum Ceiling", desc: ITEM_LIBRARY["Gypsum Ceiling"].desc, rate: 120, formula: "W*L" },
+          { name: "Electric", desc: ITEM_LIBRARY["Electric"].desc, rate: 1500, formula: "fixed" },
+          { name: "AC", desc: ITEM_LIBRARY["AC"].desc, rate: 3500, formula: "fixed" }
+        ]
+      };
+      populateCategorySelector(parsedLibrary);
+      rebuildFlatItemLibrary();
+    });
+}
+
+function parseCSV(text) {
+  let lines = [];
+  let row = [""];
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    let c = text[i];
+    let next = text[i+1];
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push("");
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && next === '\n') i++;
+      lines.push(row);
+      row = [""];
+    } else {
+      row[row.length - 1] += c;
+    }
+  }
+  if (row.length > 1 || row[0] !== "") lines.push(row);
+  return lines;
+}
+
+function processLibraryCSV(csvText) {
+  const rows = parseCSV(csvText);
+  if (rows.length === 0) return {};
+
+  const tempLib = {};
+  
+  // Find column indicators dynamically in first row headers
+  const firstRow = rows[0].map(h => h.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+  
+  const colIndex = {
+    category: firstRow.findIndex(h => h.includes('category') || h.includes('worktype') || h.includes('work')),
+    itemName: firstRow.findIndex(h => h.includes('itemname') || h.includes('item') || h.includes('particular') || h.includes('name')),
+    description: firstRow.findIndex(h => h.includes('description') || h.includes('details') || h.includes('desc') || h.includes('particulars')),
+    price: firstRow.findIndex(h => h.includes('price') || h.includes('rate') || h.includes('cost') || h.includes('m2')),
+    formula: firstRow.findIndex(h => h.includes('formula') || h.includes('calculation') || h.includes('calc') || h.includes('type'))
+  };
+
+  const idxCat = colIndex.category;
+  const idxItem = colIndex.itemName !== -1 ? colIndex.itemName : 0;
+  const idxDesc = colIndex.description !== -1 ? colIndex.description : 1;
+  const idxPrice = colIndex.price !== -1 ? colIndex.price : 2;
+  const idxForm = colIndex.formula !== -1 ? colIndex.formula : 3;
+
+  let activeCategory = "Custom";
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length === 0) continue;
+
+    const colA = row[0] ? row[0].trim() : "";
+    const colB = row[1] ? row[1].trim() : "";
+    const colC = row[2] ? row[2].trim() : "";
+    const colD = row[3] ? row[3].trim() : "";
+
+    // Parse category spacer rows
+    if (colA && !colB && !colC && !colD) {
+      activeCategory = colA;
+      if (!tempLib[activeCategory]) {
+        tempLib[activeCategory] = [];
+      }
+      continue;
+    }
+
+    let category = activeCategory;
+    if (idxCat !== -1 && row[idxCat]) {
+      const rowCatVal = row[idxCat].trim();
+      if (rowCatVal) category = rowCatVal;
+    }
+
+    const name = row[idxItem] ? row[idxItem].trim() : "";
+    const desc = row[idxDesc] ? row[idxDesc].trim() : "";
+    
+    let price = 0;
+    if (row[idxPrice]) {
+      price = parseFloat(row[idxPrice].replace(/[^0-9.]/g, '')) || 0;
+    }
+    const formula = row[idxForm] ? row[idxForm].trim().toLowerCase() : "";
+
+    if (!name) continue;
+
+    if (!tempLib[category]) {
+      tempLib[category] = [];
+    }
+    tempLib[category].push({
+      name: name,
+      desc: desc,
+      rate: price,
+      formula: formula
+    });
+  }
+  return tempLib;
+}
+
+function rebuildFlatItemLibrary() {
+  flatItemLibrary = {};
+  
+  Object.keys(ITEM_LIBRARY).forEach(key => {
+    flatItemLibrary[key] = {
+      desc: ITEM_LIBRARY[key].desc,
+      rate: ITEM_LIBRARY[key].rate,
+      formula: ITEM_LIBRARY[key].formula
+    };
+  });
+
+  Object.keys(parsedLibrary).forEach(cat => {
+    parsedLibrary[cat].forEach(item => {
+      flatItemLibrary[item.name] = {
+        desc: item.desc,
+        rate: item.rate,
+        formula: item.formula
+      };
+    });
+  });
+
+  const datalist = document.getElementById('itemNamesDatalist');
+  if (datalist) {
+    datalist.innerHTML = '';
+    Object.keys(flatItemLibrary).forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      datalist.appendChild(option);
+    });
+  }
+}
+
+function populateCategorySelector(library) {
+  const selector = document.getElementById('workTypeSelector');
+  selector.innerHTML = '<option value="Custom">Custom / Manual Input</option>';
+  Object.keys(library).forEach(cat => {
+    selector.innerHTML += `<option value="${cat}">${cat}</option>`;
+  });
+}
+
+function onWorkTypeChange(val) {
+  if (val === 'Custom') {
+    document.getElementById('subject').value = '';
+    return;
+  }
+  document.getElementById('subject').value = "Supply and installation of " + val + " Work";
+  loadCategoryItems(val);
+  generateQuotation();
+  triggerSilentCloudSave();
+}
+
+function loadCategoryItems(catName) {
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+
+  const w = parseFloat(document.getElementById('globalWidth').value) || 0;
+  const l = parseFloat(document.getElementById('globalLength').value) || 0;
+  const h = parseFloat(document.getElementById('globalHeight').value) || 0;
+
+  const wm = w / 100;
+  const lm = l / 100;
+  const hm = h / 100;
+
+  if (!parsedLibrary[catName]) return;
+
+  parsedLibrary[catName].forEach(item => {
+    let forceCustomSizes = false;
+    let sizeW = 0, sizeL = 0, sizeH = 0;
+    let formula = item.formula ? item.formula.toLowerCase().trim() : "";
+    let rate = item.rate;
+    let priceType = "Standard";
+
+    if (formula === "fixed" || !formula) {
+      priceType = "Fixed";
+    } else {
+      if (formula.includes("w") || formula.includes("l") || formula.includes("h")) {
+        forceCustomSizes = true;
+        if (formula === "w*l" || formula === "l*w") {
+          sizeW = w; sizeL = l;
+        } else if (formula === "w*h" || formula === "h*w") {
+          sizeW = w; sizeH = h;
+        } else if (formula === "l*h" || formula === "h*l") {
+          sizeL = l; sizeH = h;
+        } else {
+          const computedArea = evaluateFormula(formula, wm, lm, hm);
+          sizeW = 100;
+          sizeL = Math.round(computedArea * 100);
+        }
+      } else {
+        priceType = "Fixed";
+      }
+    }
+
+    addItem(item.name, item.desc, forceCustomSizes);
+    const id = itemCount;
+    document.getElementById('priceType_' + id).value = priceType;
+    onPriceTypeChange(id, priceType);
+    document.getElementById('rateInput_' + id).value = rate;
+
+    if (forceCustomSizes && (sizeW > 0 || sizeL > 0 || sizeH > 0)) {
+      setDimensionRow(id, 1, sizeW, sizeL, sizeH, 1);
+    }
+    calcArea(id);
+  });
+}
+
+// ─── ADD ITEM ────────────────────────────────────────────────────────────────
+function addItem(prefillName = '', prefillDesc = '', forceCustomSizes = false) {
+  itemCount++;
+  const id = itemCount;
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  div.id = 'item_' + id;
+
+  div.innerHTML = `
+    <h4>Item #${id}</h4>
+    <button class="btn-remove" onclick="removeItem(${id})">✕</button>
+    <div class="item-grid">
+      <div class="full">
+        <label>Item Name</label>
+        <input type="text" id="name_${id}" list="itemNamesDatalist" value="${prefillName}" placeholder="Search or select..." oninput="onItemNameInput(${id}, this.value)" style="font-weight:bold;">
+      </div>
+      <div class="full">
+        <label>Description</label>
+        <textarea id="desc_${id}" rows="2" style="width:100%;background:#16213e;border:1px solid #1a4a80;color:#eee;padding:6px 8px;border-radius:4px;font-size:11px;resize:vertical;" placeholder="Supply & Installation of...">${prefillDesc}</textarea>
+      </div>
+      
+      <!-- Width, Length, Height, and Quantity Toggle -->
+      <div class="full" style="display:flex; align-items:center; gap:8px; margin-top:5px; margin-bottom:5px;">
+        <input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})" style="width:16px; height:16px; cursor:pointer;" ${forceCustomSizes ? 'checked' : ''}>
+        <label for="toggle_size_${id}" style="font-weight:bold; color:#1abc9c; cursor:pointer; margin:0; text-transform:none; font-size:12px;">📐 Custom Sizes / Measurements (Up to 5 sets)</label>
+      </div>
+
+      <div class="full sizes-container" id="sizes_container_${id}" style="${forceCustomSizes ? 'display:block;' : 'display:none;'}">
+        <div class="sizes-title">📐 Sizes (W × L × H / Quantity)</div>
+        <div class="size-row">
+          <span>#1</span>
+          <input type="number" id="w1_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <input type="number" id="l1_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <input type="number" id="h1_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span>
+          <input type="number" id="qty1_${id}" value="1" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#2</span>
+          <input type="number" id="w2_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <input type="number" id="l2_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <input type="number" id="h2_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span>
+          <input type="number" id="qty2_${id}" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#3</span>
+          <input type="number" id="w3_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <input type="number" id="l3_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <input type="number" id="h3_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span>
+          <input type="number" id="qty3_${id}" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#4</span>
+          <input type="number" id="w4_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <input type="number" id="l4_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <input type="number" id="h4_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span>
+          <input type="number" id="qty4_${id}" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#5</span>
+          <input type="number" id="w5_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <input type="number" id="l5_${id}" placeholder="L (cm)" oninput="calcArea(${id})">
+          <input type="number" id="h5_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span>
+          <input type="number" id="qty5_${id}" oninput="calcArea(${id})">
+        </div>
+      </div>
+
+      <div class="full" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div>
+          <label>Pricing Option</label>
+          <select id="priceType_${id}" onchange="onPriceTypeChange(${id}, this.value)">
+            <option value="Standard">Standard Base Rate (per m²)</option>
+            <option value="Custom">Custom Rate (per m²)</option>
+            <option value="Fixed">Fixed Price (Total Cost)</option>
+          </select>
+        </div>
+        <div>
+          <label id="rateLabel_${id}">Standard Base Rate (AED)</label>
+          <input type="number" id="rateInput_${id}" placeholder="-" oninput="calcArea(${id})" readonly style="background:#0e1726; color:#999;">
+        </div>
+      </div>
+      
+      <div class="full" style="display: flex; gap: 8px; margin-top: 5px;">
+        <button type="button" onclick="duplicateItemRow(${id})" style="flex:1; background:#34495e; color:white; border:none; padding:6px; border-radius:4px; font-size:11px; cursor:pointer;">📋 Duplicate Item</button>
+      </div>
+    </div>
+    <div class="calc-result" id="calc_${id}" data-amount="0" data-base-area="0">Enter dimensions or select item</div>
+  `;
+  document.getElementById('itemsContainer').appendChild(div);
+}
+
+function onItemNameInput(id, val) {
+  const matched = flatItemLibrary[val.trim()];
+  if (matched) {
+    document.getElementById('desc_' + id).value = matched.desc || '';
+    
+    const pricingSelect = document.getElementById('priceType_' + id);
+    const rateInput = document.getElementById('rateInput_' + id);
+    
+    if (matched.formula === 'fixed') {
+      pricingSelect.value = 'Fixed';
+      onPriceTypeChange(id, 'Fixed');
+    } else {
+      pricingSelect.value = 'Standard';
+      onPriceTypeChange(id, 'Standard');
+    }
+    
+    rateInput.value = matched.rate || 0;
+    calcArea(id);
+    generateQuotation();
+    triggerSilentCloudSave();
+  }
+}
+
+function toggleSizeDisplay(id) {
+  const container = document.getElementById('sizes_container_' + id);
+  const isChecked = document.getElementById('toggle_size_' + id).checked;
+  container.style.display = isChecked ? 'block' : 'none';
+  calcArea(id);
+}
+
+function onPriceTypeChange(id, type) {
+  const rateInput = document.getElementById('rateInput_' + id);
+  const label = document.getElementById('rateLabel_' + id);
+  
+  if (type === 'Custom' || type === 'Fixed') {
+    rateInput.readOnly = false;
+    rateInput.style.background = '#0f3460';
+    rateInput.style.color = '#eee';
+    label.textContent = type === 'Fixed' ? 'Fixed Price (Total AED)' : 'Custom Rate per m² (AED)';
+  } else {
+    rateInput.readOnly = true;
+    rateInput.style.background = '#0e1726';
+    rateInput.style.color = '#999';
+    label.textContent = 'Standard Base Rate (AED)';
+    const name = document.getElementById('name_' + id).value;
+    if (flatItemLibrary[name]) {
+      rateInput.value = flatItemLibrary[name].rate;
+    } else {
+      rateInput.value = '';
+    }
+  }
+  calcArea(id);
+}
+
+function applySmartEstimator() {
+  const w = parseFloat(document.getElementById('globalWidth').value) || 0;
+  const l = parseFloat(document.getElementById('globalLength').value) || 0;
+  const h = parseFloat(document.getElementById('globalHeight').value) || 0;
+
+  if (w <= 0 || l <= 0 || h <= 0) {
+    alert("Please enter valid positive centimeter measurements.");
+    return;
+  }
+
+  hasEstimatorBeenRun = true;
+  const activeCategory = document.getElementById('workTypeSelector').value;
+  if (activeCategory !== "Custom") {
+    loadCategoryItems(activeCategory);
+  } else {
+    loadCategoryItems("Glass Room");
+  }
+  generateQuotation();
+  triggerSilentCloudSave();
+}
+
+function setDimensionRow(id, step, w, l, h, qty) {
+  document.getElementById(`w${step}_${id}`).value = Math.round(w) || '';
+  document.getElementById(`l${step}_${id}`).value = Math.round(l) || '';
+  document.getElementById(`h${step}_${id}`).value = Math.round(h) || '';
+  document.getElementById(`qty${step}_${id}`).value = qty || 1;
+  calcArea(id);
+}
+
+// ─── MATHEMATICAL EVALUATION AND CALCULATION MODULE ─────────────────────────
+function calcCustomSizeArea(w, l, h, formula) {
+  let f = formula.toLowerCase().replace(/\s+/g, '');
+  if (f === 'fixed' || !f) return 1;
+  let wm = w / 100;
+  let lm = l / 100;
+  let hm = h / 100;
+  let clean = f.replace(/w/g, wm).replace(/l/g, lm).replace(/h/g, hm);
+  try {
+    if (/^[0-9.+\-*/()]+$/.test(clean)) {
+      return Function(`"use strict"; return (${clean})`)();
+    }
+  } catch(e) {
+    console.error(e);
+  }
+  return wm * lm; 
+}
+
+function evaluateFormula(formulaStr, w, l, h) {
+  let clean = formulaStr.toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/w/g, w)
+    .replace(/l/g, l)
+    .replace(/h/g, h);
+  try {
+    if (/^[0-9.+\-*/()]+$/.test(clean)) {
+      return Function(`"use strict"; return (${clean})`)();
+    }
+  } catch(e) {
+    console.error("Evaluation error", e);
+  }
+  return 0;
+}
+
+function calcArea(id) {
+  let totalRawArea = 0;
+  let totalQty = 0;
+  let sizeStrings = [];
+  const sizeEnabled = document.getElementById('toggle_size_' + id).checked;
+
+  if (sizeEnabled) {
+    const name = document.getElementById('name_' + id).value;
+    const itemData = flatItemLibrary[name] || {};
+    const formula = itemData.formula || "w*h";
+
+    for (let s = 1; s <= 5; s++) {
+      const w = parseFloat(document.getElementById(`w${s}_${id}`).value) || 0;
+      const l = parseFloat(document.getElementById(`l${s}_${id}`).value) || 0;
+      const h = parseFloat(document.getElementById(`h${s}_${id}`).value) || 0;
+      const qty = parseFloat(document.getElementById(`qty${s}_${id}`).value) || (s === 1 ? 1 : 0);
+      
+      if ((w > 0 || l > 0 || h > 0) && qty > 0) {
+        const subArea = calcCustomSizeArea(w, l, h, formula);
+        totalRawArea += subArea * qty;
+        totalQty += qty;
+        
+        let dims = [];
+        if (w > 0) dims.push(`W:${w}`);
+        if (l > 0) dims.push(`L:${l}`);
+        if (h > 0) dims.push(`H:${h}`);
+        sizeStrings.push(`${dims.join('×')}cm (${qty})`);
+      }
+    }
+  } else {
+    const name = document.getElementById('name_' + id).value;
+    const itemData = flatItemLibrary[name] || {};
+    const formula = itemData.formula || "";
+    
+    const w = parseFloat(document.getElementById('globalWidth').value) || 0;
+    const l = parseFloat(document.getElementById('globalLength').value) || 0;
+    const h = parseFloat(document.getElementById('globalHeight').value) || 0;
+    
+    const wm = w / 100;
+    const lm = l / 100;
+    const hm = h / 100;
+    
+    if (formula && formula !== 'fixed') {
+      totalRawArea = evaluateFormula(formula, wm, lm, hm);
+      totalQty = 1;
+      sizeStrings.push(`Smart Estimator (${w}×${l}×${h}cm)`);
+    } else if (formula === 'fixed') {
+      totalRawArea = 0;
+      totalQty = 1;
+    } else {
+      totalRawArea = wm * lm;
+      totalQty = 1;
+    }
+  }
+
+  const rateVal = parseFloat(document.getElementById('rateInput_' + id).value) || 0;
+  const pricingOption = document.getElementById('priceType_' + id).value;
+
+  let amount = 0;
+  let calcText = '';
+
+  if (pricingOption === 'Fixed') {
+    const activeQty = totalQty > 0 ? totalQty : 1;
+    amount = rateVal * activeQty;
+    calcText = `Fixed Price Total: AED ${amount.toLocaleString('en', {minimumFractionDigits:2})}`;
+  } else if (totalRawArea > 0 && rateVal > 0) {
+    const roundedArea = Math.ceil(totalRawArea * 2) / 2;
+    amount = roundedArea * rateVal;
+    calcText = `Area: ${totalRawArea.toFixed(4)}m² → Rounded: ${roundedArea.toFixed(1)}m² × AED ${rateVal.toFixed(2)}/m² = AED ${amount.toFixed(2)}`;
+  } else if (totalRawArea > 0) {
+    calcText = `Area: ${totalRawArea.toFixed(4)}m² | Enter base rate`;
+  } else if (rateVal > 0) {
+    amount = rateVal;
+    calcText = `Flat Rate Cost: AED ${amount.toFixed(2)}`;
+  } else {
+    calcText = 'No calculation data';
+  }
+
+  const el = document.getElementById('calc_' + id);
+  el.textContent = calcText;
+  el.dataset.amount = amount;
+  el.dataset.sizeText = sizeStrings.length > 0 ? sizeStrings.join(' | ') : '-';
+  el.dataset.roundedArea = totalRawArea > 0 ? (Math.ceil(totalRawArea * 2) / 2).toFixed(1) : '';
+}
+
+function removeItem(id) {
+  const row = document.getElementById('item_' + id);
+  if (row) row.remove();
+  generateQuotation();
+  triggerSilentCloudSave();
+}
+
+function duplicateItemRow(id) {
+  const name = document.getElementById('name_' + id).value;
+  const desc = document.getElementById('desc_' + id).value;
+  const isSizesChecked = document.getElementById('toggle_size_' + id).checked;
+  addItem(name, desc, isSizesChecked);
+  const targetId = itemCount;
+  if (isSizesChecked) {
+    for (let s = 1; s <= 5; s++) {
+      document.getElementById(`w${s}_${targetId}`).value = document.getElementById(`w${s}_${id}`).value;
+      document.getElementById(`l${s}_${targetId}`).value = document.getElementById(`l${s}_${id}`).value;
+      document.getElementById(`h${s}_${targetId}`).value = document.getElementById(`h${s}_${id}`).value;
+      document.getElementById(`qty${s}_${targetId}`).value = document.getElementById(`qty${s}_${id}`).value;
+    }
+  }
+  const priceType = document.getElementById('priceType_' + id).value;
+  document.getElementById('priceType_' + targetId).value = priceType;
+  onPriceTypeChange(targetId, priceType);
+  document.getElementById('rateInput_' + targetId).value = document.getElementById('rateInput_' + id).value;
+  calcArea(targetId);
+  generateQuotation();
+  triggerSilentCloudSave();
+}
+
+function getItems() {
+  const items = [];
+  document.querySelectorAll('.item-row').forEach(row => {
+    const id = row.id.replace('item_', '');
+    const nameEl = document.getElementById('name_' + id);
+    const selectedName = nameEl ? nameEl.value : '';
+    let itemName = (selectedName && selectedName !== '-- Select Item --' && selectedName !== 'Custom') ? selectedName : '';
+    const calcEl = document.getElementById('calc_' + id);
+    const amount = parseFloat(calcEl.dataset.amount) || 0;
+    const size = calcEl.dataset.sizeText || '-';
+    const roundedArea = calcEl.dataset.roundedArea || '';
+    const desc = document.getElementById('desc_' + id).value;
+    items.push({ itemName, desc, size, qty: 1, amount, roundedArea });
+  });
+  return items;
+}
+
+// ─── LOCAL STORAGE DRAFTS ─────────────────────────────────────────────────
+function saveDraft() {
+  const draft = {
+    ref: document.getElementById('quotRef').value,
+    date: document.getElementById('quotDate').value,
+    clientAddr: document.getElementById('clientAddr').value,
+    clientPhone: document.getElementById('clientPhone').value,
+    clientEmail: document.getElementById('clientEmail').value,
+    subject: document.getElementById('subject').value,
+    docMode: document.getElementById('documentMode').value,
+    vatToggle: document.getElementById('vatToggle').value,
+    
+    // Save invoice manual inputs
+    invParts: [
+      document.getElementById('invPart1').value,
+      document.getElementById('invPart2').value,
+      document.getElementById('invPart3').value,
+      document.getElementById('invPart4').value
+    ],
+    invAmts: [
+      document.getElementById('invAmt1').value,
+      document.getElementById('invAmt2').value,
+      document.getElementById('invAmt3').value,
+      document.getElementById('invAmt4').value
+    ],
+    items: serializeItems()
+  };
+  localStorage.setItem('quotationDraft', JSON.stringify(draft));
+}
+
+function loadDraft() {
+  const raw = localStorage.getItem('quotationDraft');
+
+  if (raw) {
+    try {
+      const draft = JSON.parse(raw);
+      if (draft.ref) document.getElementById('quotRef').value = draft.ref;
+      if (draft.date) document.getElementById('quotDate').value = draft.date;
+      document.getElementById('clientAddr').value = draft.clientAddr || '';
+      document.getElementById('clientPhone').value = draft.clientPhone || '';
+      document.getElementById('clientEmail').value = draft.clientEmail || '';
+      document.getElementById('subject').value = draft.subject || '';
+      document.getElementById('documentMode').value = draft.docMode || 'Quotation';
+      document.getElementById('vatToggle').value = draft.vatToggle || 'no';
+
+      // Restore custom invoice parameters
+      if (draft.invParts) {
+        document.getElementById('invPart1').value = draft.invParts[0] || '';
+        document.getElementById('invPart2').value = draft.invParts[1] || '';
+        document.getElementById('invPart3').value = draft.invParts[2] || '';
+        document.getElementById('invPart4').value = draft.invParts[3] || '';
+      }
+      if (draft.invAmts) {
+        document.getElementById('invAmt1').value = draft.invAmts[0] || '';
+        document.getElementById('invAmt2').value = draft.invAmts[1] || '';
+        document.getElementById('invAmt3').value = draft.invAmts[2] || '';
+        document.getElementById('invAmt4').value = draft.invAmts[3] || '';
+      }
+
+      if (draft.items && draft.items.length > 0) {
+        deserializeItems(draft.items);
+      } else {
+        addItem();
+      }
+    } catch (e) {
+      console.error(e);
+      addItem();
+    }
+  } else {
+    addItem();
+  }
+}
+
+// ─── CLOUD SYNC DIRECTORY ──────────────────────────────────────────────────
+let allFetchedQuotes = [];
+function fetchRecentQuotes() {
+  const listEl = document.getElementById('recentQuotesList');
+  listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">Connecting...</div>';
+  fetch(DB_URL)
+  .then(res => res.json())
+  .then(quotes => {
+    allFetchedQuotes = quotes;
+    renderQuotesList(quotes);
+    determineNextRefAndAssign(quotes);
+  })
+  .catch(err => {
+    console.error(err);
+    listEl.innerHTML = '<div style="text-align: center; color: #ffb4a2; padding: 10px;">Connection issue</div>';
+  });
+}
+
+function fetchRecentQuotesSilently() {
+  fetch(DB_URL)
+  .then(res => res.json())
+  .then(quotes => {
+    allFetchedQuotes = quotes;
+    renderQuotesList(quotes);
+  })
+  .catch(err => console.error(err));
+}
+
+function renderQuotesList(quotes) {
+  const listEl = document.getElementById('recentQuotesList');
+  if (!quotes || quotes.length === 0) {
+    listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">No entries</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  quotes.forEach(q => {
+    const item = document.createElement('div');
+    item.style.padding = '6px';
+    item.style.borderBottom = '1px solid #1a4a80';
+    item.style.cursor = 'pointer';
+    item.onmouseover = () => item.style.background = '#16213e';
+    item.onmouseout = () => item.style.background = 'none';
+    item.onclick = () => loadSelectedQuote(q.ref);
+    item.innerHTML = `
+      <div style="display:flex; justify-content:space-between; font-weight:bold;">
+        <span style="color:#e74c3c;">${q.ref}</span>
+        <span style="font-size:10px; color:#4ecca3;">${q.date || ''}</span>
+      </div>
+      <div style="font-size:10px; color:#aaa; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        ${q.clientAddr || ''} - ${q.subject || ''}
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function filterRecentQuotes() {
+  const query = document.getElementById('searchQuotes').value.toLowerCase();
+  const filtered = allFetchedQuotes.filter(q => {
+    return (q.ref && q.ref.toLowerCase().includes(query)) ||
+           (q.clientAddr && q.clientAddr.toLowerCase().includes(query)) ||
+           (q.subject && q.subject.toLowerCase().includes(query));
+  });
+  renderQuotesList(filtered);
+}
+
+function loadSelectedQuote(ref) {
+  const found = allFetchedQuotes.find(q => q.ref === ref);
+  if (found) {
+    document.getElementById('quotRef').value = found.ref;
+    document.getElementById('quotDate').value = found.date;
+    document.getElementById('clientAddr').value = found.clientAddr;
+    document.getElementById('clientPhone').value = found.clientPhone;
+    document.getElementById('clientEmail').value = found.clientEmail;
+    document.getElementById('subject').value = found.subject;
+    if (found.itemsJson) {
+      const itemsData = JSON.parse(found.itemsJson);
+      deserializeItems(itemsData);
+    }
+    generateQuotation();
+  }
+}
+
+// ─── DOCUMENT LAYOUT GENERATOR ──────────────────────────────────────────────
+function generateQuotation() {
+  const ref = document.getElementById('quotRef').value || 'AA-2026-201';
+  document.title = ref;
+
+  const date = formatDate(document.getElementById('quotDate').value);
+  const clientAddr = document.getElementById('clientAddr').value || 'Dubai - United Arab Emirates';
+  const clientPhone = document.getElementById('clientPhone').value || 'NA';
+  const clientEmail = document.getElementById('clientEmail').value || 'NA';
+  const subject = document.getElementById('subject').value || 'Supply & Installation Works';
+  const documentMode = document.getElementById('documentMode').value;
+  const isVatApplied = document.getElementById('vatToggle').value === 'yes';
+
+  const notesListHTML = DEFAULT_TERMS.split('\n').map(term => {
+    if(!term.trim()) return '';
+    return `<li>${term.replace(/^•\s*/, '')}</li>`;
+  }).join('');
+
+  const isInvoice = (documentMode === 'Invoice');
+
+  // Header Logo and branding layout 
+  const headerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; border-bottom:3px solid #c0392b; margin-bottom:10px;">
+      <div style="display:flex; align-items:center; gap:15px;">
+        <img src="Ahmad_Aluminium_Logo.png" alt="Ahmad Aluminium" onerror="this.onerror=null; this.src='https://ahmadaluminium.ae/wp-content/uploads/2023/10/Ahmad_Aluminium_Logo.png'; this.style.display='block';" style="max-height:85px; width:auto;">
+        <div id="fallbackBranding" style="display:none;">
+          <div style="background:#c0392b; color:white; padding:10px 14px; font-size:24px; font-weight:900; letter-spacing:2px; border-radius:4px;">AHMAD</div>
+          <div style="font-size:16px; font-weight:900; color:#c0392b; letter-spacing:1px;">ALUMINIUM & GLASS CONT</div>
+        </div>
+        <div style="margin-left: 5px;">
+          <div style="font-size:12px; font-weight:900; color:#111; letter-spacing:1px;">#1 ALUMINIUM & GLASS CONT UAE</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:38px; font-weight:900; color:#c0392b; letter-spacing:5px; text-transform:uppercase;">${documentMode.toUpperCase()}</div>
+      </div>
+    </div>
+    <div style="background:#fdf5f5; border:1px solid #e0c0c0; padding:7px 14px; display:flex; gap:30px; font-size:12px; margin-bottom:12px; border-radius:4px; align-items:center; color:#c0392b; font-weight:bold;">
+      <span>📞 +971588490784</span>
+      <span>✉️ info@ahmadaluminium.ae</span>
+      <span>🌐 www.ahmadaluminium.ae</span>
+    </div>`;
+
+  const trnRowHTML = (isVatApplied) 
+    ? `<div style="font-size:12px; margin-top:2px;"><strong>TRN Number:</strong> 100452310200003</div>` 
+    : '';
+
+  const watermarkHTML = `
+    <div class="watermark-container">
+      <div class="watermark-text">AHMAD ALUMINIUM</div>
+    </div>`;
+
+  let tableHeaderHTML = '';
+  let rowsHTML = '';
+  let totalsHTML = '';
+
+  if (isInvoice) {
+    // ─── TAX INVOICE FORMAT (Only custom invoice rows, stamp and signature) ───
+    tableHeaderHTML = `
+      <tr>
+        <th style="width:38px;">Sr.</th>
+        <th>Particulars</th>
+        <th style="width:120px; text-align:right;">Amount</th>
+        <th style="width:120px; text-align:right;">Advance60%</th>
+        <th style="width:140px; text-align:right;">Total Amount (AED)</th>
+      </tr>`;
+
+    const invItems = [];
+    for (let i = 1; i <= 4; i++) {
+      const part = document.getElementById('invPart' + i).value.trim();
+      const amt = parseFloat(document.getElementById('invAmt' + i).value) || 0;
+      if (part || amt > 0) {
+        invItems.push({ particulars: part || `Particular Segment Line #${i}`, amount: amt });
+      }
+    }
+
+    if (invItems.length === 0) {
+      document.getElementById('quotationDoc').innerHTML = `
+        <div style="text-align:center; color:#999; padding:80px 0; font-size:16px;">
+          Fill out the invoice particulars and click <strong style="color:#e74c3c">Generate Quotation</strong>
+        </div>`;
+      return;
+    }
+
+    let totalBaseAmount = 0;
+    let totalAdvanceAmount = 0;
+
+    invItems.forEach((item, idx) => {
+      const baseItemAmount = item.amount;
+      const advanceItemAmount = baseItemAmount * 0.60;
+      totalBaseAmount += baseItemAmount;
+      totalAdvanceAmount += advanceItemAmount;
+
+      rowsHTML += `<tr>
+        <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
+        <td>
+          <span class="item-name">${item.particulars}</span>
+        </td>
+        <td style="text-align:right;">${baseItemAmount.toLocaleString('en', {minimumFractionDigits:2})}</td>
+        <td style="text-align:right;">${advanceItemAmount.toLocaleString('en', {minimumFractionDigits:2})}</td>
+        <td style="text-align:right; font-weight:bold;">${advanceItemAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+      </tr>`;
+    });
+
+    const vatVal = totalAdvanceAmount * 0.05;
+    const finalInvoiceTotal = isVatApplied ? (totalAdvanceAmount + vatVal) : totalAdvanceAmount;
+
+    totalsHTML += `
+      <tr class="total-row">
+        <td colspan="3" style="border:none; background:none !important;"></td>
+        <td style="text-align:right; font-weight:bold;">Advance (60%)</td>
+        <td style="text-align:right;">${totalAdvanceAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+      </tr>`;
+
+    if (isVatApplied) {
+      totalsHTML += `
+        <tr class="total-row">
+          <td colspan="3" style="border:none; background:none !important;"></td>
+          <td style="text-align:right; font-weight:bold;">VAT (5%)</td>
+          <td style="text-align:right;">${vatVal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+        </tr>`;
+    }
+
+    totalsHTML += `
+      <tr class="total-row">
+        <td colspan="3" style="border:none; background:none !important;"></td>
+        <td style="text-align:right; font-weight:bold;">Grand Total</td>
+        <td style="text-align:right; color:#c0392b;">${finalInvoiceTotal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+      </tr>`;
+
+    const invoicePage = `
+    <div class="quotation-page">
+      ${watermarkHTML}
+      <div style="position:relative; z-index:1;">
+        ${headerHTML}
+        
+        <div class="client-meta-grid" style="margin-top:15px; margin-bottom:15px;">
+          <div>
+            <div class="section-label" style="font-size:12px; color:#c0392b;">CLIENT DETAILS:</div>
+            <div style="font-size:13px; line-height:1.6;">
+              <div><strong>To:</strong> ${clientAddr.split(',')[0]}</div>
+              <div><strong>Address:</strong> ${clientAddr}</div>
+              <div><strong>Phone:</strong> ${clientPhone}</div>
+            </div>
+          </div>
+          <div style="text-align:right; font-size:13px; line-height:1.6;">
+            <div><strong>Invoice No:</strong> ${ref}</div>
+            <div><strong>Date:</strong> ${date}</div>
+            ${trnRowHTML}
+          </div>
+        </div>
+
+        <div style="text-align:center; font-style:italic; font-weight:bold; font-size:13px; color:#222; border-bottom:1.5px solid #ccc; border-top:1.5px solid #ccc; padding:6px 0; margin-bottom:15px;">
+          Subject: ${subject}
+        </div>
+
+        <table>
+          <thead>
+            ${tableHeaderHTML}
+          </thead>
+          <tbody>
+            ${rowsHTML}
+            ${totalsHTML}
+          </tbody>
+        </table>
+
+        ${finalInvoiceTotal > 0 ? `<div class="amount-words" style="margin-bottom:20px;">Grand Total: <strong>${numberToWords(finalInvoiceTotal)}.</strong></div>` : ''}
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
+          <div style="width: 200px; text-align: center;">
+            <div style="font-size:11px; color:#666; margin-bottom:6px;">Company Seal / Stamp:</div>
+            ${getCircularStampSVG()}
+          </div>
+          <div style="text-align:right; width: 200px;">
+            <div style="font-size:11px; color:#666; margin-bottom:6px;">Signature:</div>
+            <div style="font-family:cursive; font-size:24px; border-bottom:1px solid #333; display:inline-block; padding:0 30px 4px; margin-bottom:10px;">Ahmad</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    document.getElementById('quotationDoc').innerHTML = invoicePage;
+
+  } else {
+    // ─── STANDARD TWO-PAGE QUOTATION LAYOUT ───
+    tableHeaderHTML = `
+      <tr>
+        <th style="width:38px;">Sr.</th>
+        <th>Particulars / Description</th>
+        <th style="width:160px; text-align:center;">Size (cm)</th>
+        <th style="width:120px; text-align:right;">Total Amount (AED)</th>
+      </tr>`;
+
+    const items = getItems();
+    let totalAmount = 0;
+    items.forEach((item, idx) => {
+      totalAmount += item.amount;
+      const sizeCell = item.size.split(' | ').join('<br>');
+      rowsHTML += `<tr>
+        <td style="text-align:center; font-weight:bold; vertical-align:top;">${idx + 1}</td>
+        <td style="vertical-align:top;">
+          <span class="item-name">${item.itemName || 'Custom Item'}</span>
+          <span class="item-desc">${item.desc}</span>
+        </td>
+        <td style="text-align:center; vertical-align:top; font-size:11px; line-height:1.4;">
+          ${sizeCell}
+          ${item.roundedArea ? '<br><span style="font-size:10px; color:#c0392b; font-weight:bold;">Total Area: '+item.roundedArea+' m²</span>' : ''}
+        </td>
+        <td style="text-align:right; font-weight:bold; vertical-align:top;">${item.amount > 0 ? item.amount.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}</td>
+      </tr>`;
+    });
+
+    const vatAmount = totalAmount * 0.05;
+    const finalQuotationTotal = isVatApplied ? (totalAmount + vatAmount) : totalAmount;
+
+    if (isVatApplied) {
+      totalsHTML += `
+        <tr class="total-row">
+          <td colspan="2" style="border:none; background:none !important;"></td>
+          <td style="text-align:right; font-weight:bold;">Sub Total</td>
+          <td style="text-align:right;">${totalAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="2" style="border:none; background:none !important;"></td>
+          <td style="text-align:right; font-weight:bold;">VAT (5%)</td>
+          <td style="text-align:right;">${vatAmount.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+        </tr>`;
+    }
+
+    totalsHTML += `
+      <tr class="total-row">
+        <td colspan="2" style="border:none; background:none !important;"></td>
+        <td style="text-align:right; font-weight:bold;">Grand Total</td>
+        <td style="text-align:right; color:#c0392b;">${finalQuotationTotal.toLocaleString('en', {minimumFractionDigits:2})} AED</td>
+      </tr>`;
+
+    // Dynamic 2D Elevation Sketch Calculation
+    const gw = parseFloat(document.getElementById('globalWidth').value) || 0;
+    const gl = parseFloat(document.getElementById('globalLength').value) || 0;
+    const gh = parseFloat(document.getElementById('globalHeight').value) || 0;
+    const schematicHTML = (hasEstimatorBeenRun && gw > 0 && gl > 0 && gh > 0) 
+      ? generateSchematicSVG(gw, gl, gh) 
+      : '';
+
+    const page1 = `
+    <div class="quotation-page">
+      ${watermarkHTML}
+      <div style="position:relative; z-index:1;">
+        ${headerHTML}
+        <div class="client-meta-grid">
+          <div>
+            <div class="section-label">Client Details</div>
+            <div><strong>Address:</strong> ${clientAddr}</div>
+            <div><strong>Phone:</strong> &nbsp;${clientPhone}</div>
+            <div><strong>Email:</strong> &nbsp;&nbsp;${clientEmail}</div>
+          </div>
+          <div>
+            <div class="section-label">Document Info</div>
+            <div><strong>Reference No:</strong> ${ref}</div>
+            <div><strong>Date:</strong> ${date}</div>
+            ${trnRowHTML}
+            <div><strong>EMAIL:</strong> info@ahmadaluminium.ae</div>
+          </div>
+        </div>
+        <div style="text-align:center; font-style:italic; font-weight:bold; font-size:14px; color:#c0392b; border-bottom:2px solid #c0392b; border-top:2px solid #c0392b; padding:8px 0; margin-bottom:15px;">
+          Subject: ${subject}
+        </div>
+
+        <table>
+          <thead>
+            ${tableHeaderHTML}
+          </thead>
+          <tbody>
+            ${rowsHTML}
+            ${totalsHTML}
+          </tbody>
+        </table>
+        ${finalQuotationTotal > 0 ? `<div class="amount-words">Grand Total: <strong>${numberToWords(finalQuotationTotal)}.</strong></div>` : ''}
+        
+        <div style="text-align:center;">
+          ${schematicHTML}
+        </div>
+      </div>
+    </div>`;
+
+    const pageBreak = `<div class="page-break-divider">Page 2 Below</div>`;
+
+    const page2 = `
+    <div class="quotation-page">
+      ${watermarkHTML}
+      <div style="position:relative; z-index:1;">
+        <div style="font-size:11px; color:#999; text-align:right; margin-bottom:12px;">Reference No: ${ref} &nbsp;|&nbsp; Continued — Page 2</div>
+
+        <div class="doc-section-title">Terms &amp; Conditions:</div>
+        <ul class="doc-list">
+          ${notesListHTML}
+        </ul>
+
+        <div style="font-size:12px; margin:18px 0 10px; line-height:1.8; font-weight:bold;">
+          Hope the above Quote is Satisfactory and meets your requirements and await your confirmed LPO.<br>
+          Kindly contact the below personal for any clarifications as required
+        </div>
+
+        <!-- SIGNATURE + STAMP ROW -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; margin-bottom:25px;">
+          <div style="font-size:12px; line-height:2.2;">
+            <div style="font-weight:bold;">Project Manager,</div>
+            <div style="font-weight:bold; font-size:13px;">Ahmad Latif</div>
+            <div>+971 58 84 90 784</div>
+          </div>
+          
+          <div style="text-align:center; z-index: 10; position: relative;">
+            ${getCircularStampSVG()}
+          </div>
+
+          <div style="text-align:center;">
+            <div style="font-size:11px; color:#666; margin-bottom:6px;">Signature:</div>
+            <div style="font-family:cursive; font-size:28px; color:#222; border-bottom:1px solid #444; padding:0 20px 4px; display:inline-block;">Ahmad</div>
+          </div>
+        </div>
+
+        <div style="border-top:2px solid #c0392b; padding-top:15px;">
+          <h3 style="color:#c0392b; font-size:14px; font-weight:bold; text-align:center; margin-bottom:12px; text-transform:uppercase; letter-spacing:2px;">Company Bank Account Details</h3>
+          <div class="bank-grid-vertical">
+            <div class="bank-card">
+              <div>
+                <strong>1) Company Account — Mashreq Bank</strong>
+                Account Title: Ahmad Aluminium and Glass Contractor LLC FZ
+                <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1021 34817 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
+              </div>
+              <div class="bank-iban">IBAN: AE36 0330 0000 1910 2134 817</div>
+            </div>
+            
+            <div class="bank-card">
+              <div>
+                <strong>2) CEO Account — Emirates NBD</strong>
+                Account Title: Ahmad Latif
+                <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 10 1580 3625 901 &nbsp;|&nbsp; Swift Code: EBILAEAD</div>
+              </div>
+              <div class="bank-iban">IBAN: AE28 0260 0010 1580 3625 901</div>
+            </div>
+            
+            <div class="bank-card">
+              <div>
+                <strong>3) CEO Account — Mashreq Bank</strong>
+                Account Title: Ahmad Latif
+                <div style="color:#666; font-size:11px; margin-top:2px;">Account No: 019 1009 20602 &nbsp;|&nbsp; Swift Code: BOMLAEAD</div>
+              </div>
+              <div class="bank-iban">IBAN: AE72 0330 0000 1910 0920 602</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    document.getElementById('quotationDoc').innerHTML = page1 + pageBreak + page2;
+  }
+}
+
+// ─── LOCAL STORAGE SERIALIZATION ───────────────────────────────────────────
+function serializeItems() {
+  const items = [];
+  document.querySelectorAll('.item-row').forEach(row => {
+    const id = row.id.replace('item_', '');
+    const name = document.getElementById('name_' + id).value;
+    const desc = document.getElementById('desc_' + id).value;
+    const priceType = document.getElementById('priceType_' + id).value;
+    const rateInput = document.getElementById('rateInput_' + id).value;
+    const sizesChecked = document.getElementById('toggle_size_' + id).checked;
+    const sizes = [];
+    if (sizesChecked) {
+      for (let s = 1; s <= 5; s++) {
+        sizes.push({
+          w: document.getElementById(`w${s}_${id}`).value,
+          l: document.getElementById(`l${s}_${id}`).value,
+          h: document.getElementById(`h${s}_${id}`).value,
+          qty: document.getElementById(`qty${s}_${id}`).value
+        });
+      }
+    }
+    items.push({ name, desc, priceType, rateInput, sizesChecked, sizes });
+  });
+  return items;
+}
+
+function deserializeItems(itemsData) {
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+  itemsData.forEach(item => {
+    addItem(item.name, item.desc, item.sizesChecked);
+    const id = itemCount;
+    document.getElementById('priceType_' + id).value = item.priceType || 'Standard';
+    onPriceTypeChange(id, item.priceType || 'Standard');
+    document.getElementById('rateInput_' + id).value = item.rateInput || '';
+    if (item.sizes && item.sizesChecked) {
+      item.sizes.forEach((sz, idx) => {
+        const s = idx + 1;
+        document.getElementById(`w${s}_${id}`).value = sz.w || '';
+        document.getElementById(`l${s}_${id}`).value = sz.l || '';
+        document.getElementById(`h${s}_${id}`).value = sz.h || '';
+        document.getElementById(`qty${s}_${id}`).value = sz.qty || '';
+      });
+    }
+    calcArea(id);
+  });
+}
+
+// ─── PDF PRINT PREPARATION ───────────────────────────────────────────────
+function downloadPDF() {
+  const s = document.createElement('style');
+  s.textContent = '@media print { body{background:white!important;} .app-header,.form-panel,.preview-toolbar{display:none!important;} .container{display:block!important;} .preview-panel{padding:0!important;background:white!important;} .quotation-page{box-shadow:none!important;width:100%!important;} .page-break-divider{display:none!important;} }';
+  document.head.appendChild(s);
+  window.print();
+  setTimeout(() => document.head.removeChild(s), 1000);
+}
+
+// ─── INITIALIZATION ON LOAD ───────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const refInput = document.getElementById('quotRef');
+  if (refInput && !refInput.value) {
+    refInput.value = "AA-2026-201";
+  }
+  setTodayDate();
+  loadDraft();
+  loadSpreadsheetLibrary();
+  updateFormVisibility();
+  fetchRecentQuotes();
+});
+</script>
+</body>
+</html>
