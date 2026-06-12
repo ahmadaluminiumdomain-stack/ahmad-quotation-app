@@ -60,7 +60,7 @@
   .btn-print { background: #0f3460; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; }
 
   /* Reconfigured to exact physical A4 dimensions for perfect symmetric margins */
-  .quotation-page { background: white; width: 210mm; min-height: 297mm; height: auto; padding: 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; margin-bottom: 25px; box-sizing: border-box; }
+  .quotation-page { background: white; width: 210mm; min-height: 297mm; height: auto; padding: 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; box-sizing: border-box; }
 
   /* Structured and Non-breakable footer container */
   .quotation-page-footer { background: white; width: 210mm; min-height: 297mm; height: auto; padding: 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; margin-bottom: 25px; box-sizing: border-box; page-break-inside: avoid !important; break-inside: avoid !important; }
@@ -209,10 +209,12 @@
 </div>
 
 <script>
-// Connected exactly with your Quotation Web App URL
+// Aligned exactly with your Quotation Web App URL
 const DB_URL = "https://script.google.com/macros/s/AKfycbz7vTFZevifbAMfMHH7XxG7cI3Zgv_uCnLgK1DKfdhCQ3LF__JC4HIH8wvTH5BKhL59Uw/exec";
 const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNizzL9Im6qMmjEcuOhH5404-GMIJDXqSuGw3xrZQARxk1sJhTIkVqT8C2AwvchDHbysmB-oftQ3Sk/pub?output=csv";
 
+// Declared globally to fix local variable scoping reference errors
+let currentYear = new Date().getFullYear();
 let parsedLibrary = {};
 let flatItemLibrary = {};
 let hasEstimatorBeenRun = false;
