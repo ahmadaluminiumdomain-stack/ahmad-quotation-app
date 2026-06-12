@@ -209,6 +209,7 @@
 </div>
 
 <script>
+// Aligned exactly with your Quotation Web App URL
 const DB_URL = "https://script.google.com/macros/s/AKfycbz7vTFZevifbAMfMHH7XxG7cI3Zgv_uCnLgK1DKfdhCQ3LF__JC4HIH8wvTH5BKhL59Uw/exec";
 const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNizzL9Im6qMmjEcuOhH5404-GMIJDXqSuGw3xrZQARxk1sJhTIkVqT8C2AwvchDHbysmB-oftQ3Sk/pub?output=csv";
 
@@ -286,10 +287,8 @@ async function selectAutoSaveFolder() {
 
 function updateFolderStatusUI(folderName) {
   const statusEl = document.getElementById('folderStatus');
-  if (folderName) {
-    statusEl.innerHTML = `Status: Auto-saving to <strong style="color: #2ecc71;">${folderName}</strong>`;
-  } else {
-    statusEl.innerHTML = `Status: Default Downloads folder`;
+  if (statusEl) {
+    statusEl.innerHTML = folderName ? `Status: Auto-saving to <strong style="color: #2ecc71;">${folderName}</strong>` : `Status: Default Downloads folder`;
   }
 }
 
@@ -349,9 +348,18 @@ function renderRecentQuotes(quotes) {
     div.style.alignItems = 'center';
     div.className = 'recent-quote-item';
     
-    const displayTotal = q.total ? parseFloat(q.total).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00';
+    // Dynamically calculate the total on-the-fly from the itemsJson array to keep database column sizes identical
+    let total = 0;
+    if (q.itemsJson) {
+      try {
+        const items = JSON.parse(q.itemsJson);
+        total = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+      } catch(e) {}
+    }
+    
+    const displayTotal = total.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     div.innerHTML = `
-      <span><strong>${q.ref}</strong> - ${q.client || 'No Address'}</span>
+      <span><strong>${q.ref}</strong> - ${q.clientAddr || 'No Address'}</span>
       <span style="color:#0f7c5d;font-weight:bold;">AED ${displayTotal}</span>
     `;
     div.onclick = () => loadQuoteFromDirectory(q);
@@ -363,14 +371,27 @@ function filterRecentQuotes() {
   const term = document.getElementById('searchQuotes').value.toLowerCase();
   const filtered = cachedRecentQuotes.filter(q => 
     (q.ref && q.ref.toLowerCase().includes(term)) || 
-    (q.client && q.client.toLowerCase().includes(term))
+    (q.clientAddr && q.clientAddr.toLowerCase().includes(term))
   );
   renderRecentQuotes(filtered);
 }
 
 function loadQuoteFromDirectory(q) {
   document.getElementById('quotRef').value = q.ref || '';
-  document.getElementById('clientAddr').value = q.client || '';
+  document.getElementById('clientAddr').value = q.clientAddr || '';
+  document.getElementById('clientPhone').value = q.clientPhone || '';
+  document.getElementById('clientEmail').value = q.clientEmail || '';
+  document.getElementById('subject').value = q.subject || '';
+  
+  if (q.date) {
+    try {
+      const d = new Date(q.date);
+      if (!isNaN(d.getTime())) {
+        document.getElementById('quotDate').valueAsDate = d;
+      }
+    } catch(e) {}
+  }
+
   if (q.itemsJson) {
     try {
       const itemsData = JSON.parse(q.itemsJson);
@@ -380,7 +401,7 @@ function loadQuoteFromDirectory(q) {
     }
   }
   generateQuotation();
-  alert(`Loaded Quotation: Ref "${q.ref}" for "${q.client || 'No Name'}".`);
+  alert(`Loaded Quotation: Ref "${q.ref}" for "${q.clientAddr || 'No Name'}".`);
 }
 
 function deserializeItems(itemsData) {
@@ -388,7 +409,7 @@ function deserializeItems(itemsData) {
   itemCount = 0;
   itemsData.forEach(item => {
     const isFixed = item.priceType === 'Fixed';
-    addItem(item.name, item.desc, item.rate || item.price || '', isFixed);
+    addItem(item.itemName || item.name || '', item.desc || '', item.rate || item.price || '', isFixed);
     const id = itemCount;
     if (item.sizes) {
       item.sizes.forEach((sz, idx) => {
@@ -1133,12 +1154,26 @@ function triggerSilentCloudSave() {
   document.getElementById('syncStatus').textContent = "☁️ Saving...";
   const data = {
     ref: document.getElementById('quotRef').value,
-    client: document.getElementById('clientAddr').value,
-    total: getItems().reduce((s, i) => s + i.amount, 0)
+    clientAddr: document.getElementById('clientAddr').value,
+    clientPhone: document.getElementById('clientPhone').value,
+    clientEmail: document.getElementById('clientEmail').value,
+    subject: document.getElementById('subject').value,
+    date: document.getElementById('quotDate').value,
+    items: getItems()
   };
-  fetch(DB_URL, { method: "POST", body: JSON.stringify(data) }).then(() => {
+  
+  // CORS-compatible post request
+  fetch(DB_URL, { 
+    method: "POST", 
+    body: JSON.stringify(data),
+    redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }
+  })
+  .then(res => res.json())
+  .then(() => {
     document.getElementById('syncStatus').textContent = "☁️ Synced";
-  }).catch(e => {
+  })
+  .catch(e => {
     document.getElementById('syncStatus').textContent = "☁️ Sync Error";
     console.error(e);
   });
@@ -1184,6 +1219,3 @@ window.onload = () => {
 </script>
 </body>
 </html>
-
---- END OF FILE ---
- 
