@@ -60,7 +60,7 @@
   .btn-print { background: #0f3460; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; }
 
   /* Reconfigured to exact physical A4 dimensions for perfect symmetric margins */
-  .quotation-page { background: white; width: 210mm; min-height: 297mm; height: auto; padding: 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; box-sizing: border-box; }
+  .quotation-page { background: white; width: 210mm; min-height: 297mm; height: auto; padding: 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; margin-bottom: 25px; box-sizing: border-box; }
 
   /* Structured and Non-breakable footer container */
   .quotation-page-footer { background: white; width: 210mm; min-height: 297mm; height: auto; padding: 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; margin-bottom: 25px; box-sizing: border-box; page-break-inside: avoid !important; break-inside: avoid !important; }
@@ -1171,16 +1171,17 @@ function triggerSilentCloudSave() {
     items: getItems()
   };
   
-  // CORS-compatible post request
+  // CORS-compatible post request with no-cors mode fallback to force write
   fetch(DB_URL, { 
     method: "POST", 
     body: JSON.stringify(data),
-    redirect: "follow",
+    mode: "no-cors",
     headers: { "Content-Type": "text/plain;charset=utf-8" }
   })
-  .then(res => res.json())
   .then(() => {
     document.getElementById('syncStatus').textContent = "☁️ Synced";
+    // Triggers history panel reload after saving
+    setTimeout(fetchRecentQuotes, 1000);
   })
   .catch(e => {
     document.getElementById('syncStatus').textContent = "☁️ Sync Error";
@@ -1208,7 +1209,6 @@ function clearDraft() {
 
 window.onload = () => {
   // Initialize dynamic Ref values safely inside onload to avoid null pointer issues
-  let currentYear = new Date().getFullYear();
   let currentSavedRef = localStorage.getItem('nextQuotNum') || 215;
   const quotRefEl = document.getElementById('quotRef');
   if (quotRefEl) {
