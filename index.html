@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ahmad Aluminium & Glass - Quotation System</title>
+<!-- html2pdf.js CDN library for programmatic high-fidelity PDF exports -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Segoe UI', sans-serif; background: #ffffff; color: #333; min-height: 100vh; }
@@ -14,32 +16,39 @@
 
   .container { display: grid; grid-template-columns: 410px 1fr; gap: 0; height: calc(100vh - 70px); }
 
-  .form-panel { background: #16213e; padding: 20px; overflow-y: auto; border-right: 1px solid #0f3460; }
-  .form-panel h2 { color: #e74c3c; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid #0f3460; }
+  /* Modernized Form Panel styling (Light high-contrast layout) */
+  .form-panel { background: #f8f9fa; padding: 20px; overflow-y: auto; border-right: 1px solid #dee2e6; }
+  .form-panel h2 { color: #c0392b; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #dee2e6; font-weight: bold; }
   .form-group { margin-bottom: 12px; }
-  .form-group label { display: block; font-size: 11px; color: #aaa; text-transform: uppercase; margin-bottom: 4px; }
-  .form-group input, .form-group select, .form-group textarea { width: 100%; background: #0f3460; border: 1px solid #1a4a80; color: #eee; padding: 8px 10px; border-radius: 4px; font-size: 13px; }
-  .form-group input:focus, .form-group select:focus { outline: none; border-color: #e74c3c; }
+  .form-group label { display: block; font-size: 11px; color: #495057; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; background: #ffffff; border: 1px solid #ced4da; color: #333; padding: 8px 10px; border-radius: 4px; font-size: 13px; transition: border-color 0.15s ease-in-out; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #c0392b; box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.1); }
 
   .items-section { margin-top: 10px; }
-  .item-row { background: #0a1628; border: 1px solid #1a4a80; border-radius: 6px; padding: 12px; margin-bottom: 10px; position: relative; }
-  .item-row h4 { color: #e74c3c; font-size: 12px; margin-bottom: 8px; }
+  
+  /* Highly visible White Cards for line items */
+  .item-row { background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin-bottom: 15px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+  .item-row h4 { color: #c0392b; font-size: 12px; margin-bottom: 8px; font-weight: bold; }
+  .item-row label { display: block; font-size: 11px; color: #495057; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+  
   .item-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
   .item-grid .full { grid-column: 1/-1; }
-  .item-grid input, .item-grid select { width:100%; background:#16213e; border:1px solid #1a4a80; color:#eee; padding:6px 8px; border-radius:4px; font-size:12px; }
+  .item-grid input, .item-grid select, .item-grid textarea { width:100%; background:#ffffff; border:1px solid #ced4da; color:#333; padding:8px 10px; border-radius:4px; font-size:12px; transition: border-color 0.15s ease-in-out; }
+  .item-grid input:focus, .item-grid select:focus, .item-grid textarea:focus { outline:none; border-color:#c0392b; box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.1); }
   
-  .sizes-container { background: #0f3460; padding: 8px; border-radius: 4px; margin-top: 4px; display: none; }
-  .sizes-title { font-size: 10px; color: #ffb4a2; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }
-  .size-row { display: grid; grid-template-columns: 20px 1fr 15px 1fr 25px 1fr; align-items: center; gap: 4px; margin-bottom: 6px; font-size: 11px; color: #aaa; }
+  .sizes-container { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 6px; border: 1px solid #e9ecef; }
+  .sizes-title { font-size: 10px; color: #c0392b; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }
+  .size-row { display: grid; grid-template-columns: 20px 1fr 15px 1fr 25px 1fr; align-items: center; gap: 4px; margin-bottom: 6px; font-size: 11px; color: #495057; }
   .size-row input { text-align: center; padding: 4px 2px !important; }
 
-  .calc-result { background: #0f3460; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #4ecca3; margin-top: 6px; line-height: 1.4; }
+  .calc-result { background: #eef9f6; padding: 8px 10px; border-radius: 4px; font-size: 12px; color: #0f7c5d; margin-top: 8px; line-height: 1.4; border: 1px solid #a3e2d4; font-weight: bold; }
 
-  .btn-add { width:100%; background: #0f3460; border: 1px dashed #e74c3c; color: #e74c3c; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 5px; }
-  .btn-add:hover { background: #e74c3c; color: white; }
-  .btn-glass-room { width:100%; background: linear-gradient(135deg, #16a085, #1abc9c); color:white; border:none; padding: 9px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 8px; font-weight: bold; }
-  .btn-glass-room:hover { background: linear-gradient(135deg, #1abc9c, #16a085); }
-  .btn-remove { position:absolute; top:8px; right:8px; background:#e74c3c; color:white; border:none; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:11px; }
+  .btn-add { width:100%; background: #ffffff; border: 1px dashed #c0392b; color: #c0392b; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 5px; font-weight: bold; transition: background 0.15s; }
+  .btn-add:hover { background: #fdf5f5; }
+  .btn-glass-room { width:100%; background: linear-gradient(135deg, #16a085, #1abc9c); color:white; border:none; padding: 9px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 8px; font-weight: bold; transition: opacity 0.15s; }
+  .btn-glass-room:hover { opacity: 0.9; }
+  .btn-remove { position:absolute; top:12px; right:12px; background:#e74c3c; color:white; border:none; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:11px; transition: background 0.15s; }
+  .btn-remove:hover { background: #c0392b; }
 
   .btn-generate { width:100%; background: linear-gradient(135deg, #e74c3c, #c0392b); color:white; border:none; padding: 12px; border-radius:6px; cursor:pointer; font-size:15px; font-weight:bold; margin-top:15px; }
   .btn-generate:hover { background: linear-gradient(135deg, #c0392b, #962d22); }
@@ -52,11 +61,17 @@
 
   .quotation-page { background: white; width: 820px; min-height: 1080px; height: auto; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; margin-bottom: 25px; box-sizing: border-box; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 15px; position: relative; z-index: 1; }
+  /* Structured and Non-breakable footer container */
+  .quotation-page-footer { background: white; width: 820px; min-height: 1080px; height: auto; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: Arial, sans-serif; color: #222; position: relative; margin-bottom: 25px; box-sizing: border-box; page-break-inside: avoid !important; break-inside: avoid !important; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 15px; position: relative; z-index: 1; table-layout: fixed; }
   table th { background: #c0392b; color: white; padding: 10px 8px; text-align: left; }
+  table th:last-child { text-align: right; }
   table td { padding: 8px 10px; border: 1px solid #ddd; vertical-align: top; }
+  table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
   table tr:nth-child(even) td { background: #fdf5f5; }
   .total-row td { font-weight: bold; background: #fdf5f5 !important; border-top: 2px solid #c0392b; }
+  .total-row td:last-child { color: #c0392b; font-size: 14px; text-align: right; }
 
   .item-name { font-weight: bold; font-size: 12px; color: #111; display: block; margin-bottom: 4px; }
   .item-desc { font-size: 11.5px; color: #444; line-height: 1.5; display: block; }
@@ -76,14 +91,22 @@
   .watermark-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 0; overflow: hidden; }
   .watermark-text { font-family: Arial, sans-serif; font-size: 55px; font-weight: 900; color: rgba(192, 57, 43, 0.035); text-transform: uppercase; transform: rotate(-35deg); white-space: nowrap; letter-spacing: 5px; }
 
+  .recent-quote-item:hover {
+    background: #e3f2fd !important;
+  }
+
   @media print {
     @page { size: A4; margin: 0 !important; }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .app-header, .form-panel, .preview-toolbar, .page-break-divider { display: none !important; }
     .container { display: block !important; width: 100% !important; }
     .preview-panel { padding: 0 !important; margin: 0 !important; background: white !important; width: 100% !important; }
-    .quotation-page { box-shadow: none !important; border: none !important; width: 100% !important; height: auto !important; min-height: 297mm !important; padding: 20mm 15mm 15mm 15mm !important; margin: 0 !important; page-break-after: always !important; }
-    .quotation-page:last-of-type { page-break-after: avoid !important; }
+    
+    /* Allow Page 1 to break naturally if there are too many items */
+    .quotation-page { box-shadow: none !important; border: none !important; width: 100% !important; height: auto !important; min-height: 297mm !important; padding: 20mm 15mm 15mm 15mm !important; margin: 0 !important; page-break-after: always !important; page-break-inside: auto !important; }
+    
+    /* Prevent Page 2 (T&Cs and Bank Details) from splitting under any circumstances */
+    .quotation-page-footer { box-shadow: none !important; border: none !important; width: 100% !important; height: auto !important; min-height: 297mm !important; padding: 20mm 15mm 15mm 15mm !important; margin: 0 !important; page-break-inside: avoid !important; break-inside: avoid !important; page-break-after: avoid !important; }
   }
   .page-break-divider { text-align:center; color:#888; font-size:11px; font-weight: bold; padding: 10px 0; letter-spacing:2px; text-transform: uppercase; }
 </style>
@@ -102,18 +125,25 @@
 <div class="container">
   <div class="form-panel" id="formPanel">
     
-    <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; border: 1px solid #1a4a80; margin-bottom: 15px;">
-      <label style="color: #4ecca3; font-weight: bold; font-size: 11px; margin-bottom: 4px; display: block; letter-spacing: 1px;">☁️ Cloud Database Status</label>
-      <div id="syncStatus" style="font-size: 12px; color: #4ecca3; font-weight: bold;">☁️ Connected & Synced</div>
+    <div class="form-group" style="background: #e8f5e9; padding: 12px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px;">
+      <label style="color: #2e7d32; font-weight: bold; font-size: 11px; margin-bottom: 4px; display: block; letter-spacing: 1px;">☁️ Cloud Database Status</label>
+      <div id="syncStatus" style="font-size: 12px; color: #2e7d32; font-weight: bold;">☁️ Connected & Synced</div>
     </div>
 
-    <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; border: 1px solid #1a4a80; margin-bottom: 20px;">
-      <label style="color: #3498db; font-weight: bold; font-size: 11px; margin-bottom: 8px; display: block; letter-spacing: 1px;">🔍 Recent Quotations Directory</label>
-      <input type="text" id="searchQuotes" placeholder="Type to search..." oninput="filterRecentQuotes()" style="margin-bottom: 8px; font-size: 11px;">
-      <div id="recentQuotesList" style="max-height: 120px; overflow-y: auto; background: #0f3460; border-radius: 4px; padding: 5px; font-size: 11px; color: #eee; border: 1px solid #1a4a80;">
+    <!-- AUTO-SAVE DIRECTORY SELECTION COMPONENT -->
+    <div class="form-group" style="background: #fff5f5; padding: 12px; border-radius: 6px; border: 1px solid #ffcdd2; margin-bottom: 15px;">
+      <label style="color: #c62828; font-weight: bold; font-size: 11px; margin-bottom: 6px; display: block; letter-spacing: 1px;">📁 Target Save Folder Setup</label>
+      <button onclick="selectAutoSaveFolder()" style="width: 100%; background: #c0392b; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📂 Choose Save Folder Once</button>
+      <div id="folderStatus" style="font-size: 11px; color: #c62828; margin-top: 6px;">Status: Default Downloads folder</div>
+    </div>
+
+    <div class="form-group" style="background: #e3f2fd; padding: 12px; border-radius: 6px; border: 1px solid #bbdefb; margin-bottom: 20px;">
+      <label style="color: #0d47a1; font-weight: bold; font-size: 11px; margin-bottom: 8px; display: block; letter-spacing: 1px;">🔍 Recent Quotations Directory</label>
+      <input type="text" id="searchQuotes" placeholder="Type to search..." oninput="filterRecentQuotes()" style="margin-bottom: 8px; font-size: 11px; background: #ffffff; border: 1px solid #ced4da; color: #333;">
+      <div id="recentQuotesList" style="max-height: 120px; overflow-y: auto; background: #ffffff; border-radius: 4px; padding: 5px; font-size: 11px; color: #333; border: 1px solid #ced4da;">
         <div style="text-align: center; color: #888; padding: 10px;">Loading History...</div>
       </div>
-      <button onclick="fetchRecentQuotes()" style="width: 100%; margin-top: 8px; background: #3498db; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Refresh Directory</button>
+      <button onclick="fetchRecentQuotes()" style="width: 100%; margin-top: 8px; background: #1976d2; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Refresh Directory</button>
     </div>
 
     <h2>📋 Quotation Details</h2>
@@ -125,18 +155,10 @@
       </select>
     </div>
 
-    <div class="form-group">
-      <label>📑 Document Layout</label>
-      <select id="documentMode" onchange="generateQuotation();">
-        <option value="Quotation">Standard Quotation</option>
-        <option value="Invoice">Tax Invoice (Advance 60%)</option>
-      </select>
-    </div>
-
     <div class="form-group" style="display: flex; gap: 10px;">
       <div style="flex: 1;">
         <label>Ref Number</label>
-        <input type="text" id="quotRef" placeholder="AA-2026-201">
+        <input type="text" id="quotRef" placeholder="AA-2026-215">
       </div>
       <button onclick="clearDraft()" style="background: #e74c3c; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-size: 11px; margin-top: 20px;">🧹 Reset</button>
     </div>
@@ -156,11 +178,12 @@
     </div>
 
     <div class="form-group" style="background: rgba(22, 160, 133, 0.15); padding: 12px; border-radius: 6px; border: 1px solid #1abc9c;">
+      <!-- Master Dimensions with blank initial values -->
       <label style="color: #1abc9c; font-weight: bold; font-size: 11px;">📐 Room Dimensions (cm)</label>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-        <input type="number" id="globalWidth" value="400" placeholder="W">
-        <input type="number" id="globalLength" value="500" placeholder="L">
-        <input type="number" id="globalHeight" value="300" placeholder="H">
+        <input type="number" id="globalWidth" placeholder="W">
+        <input type="number" id="globalLength" placeholder="L">
+        <input type="number" id="globalHeight" placeholder="H">
       </div>
       <button class="btn-glass-room" onclick="applySmartEstimator()">⚡ Apply Formulas</button>
     </div>
@@ -192,14 +215,197 @@ let parsedLibrary = {};
 let flatItemLibrary = {};
 let hasEstimatorBeenRun = false;
 let itemCount = 0;
+let cachedRecentQuotes = [];
 
-const DEFAULT_TERMS = `• 60% Advance Payment.
-• 30% on all material delivery on site.
-• 10% after Completion.
-• 5% VAT applied as per UAE law.
-• Validity 07 Days.`;
+// --- INDEXEDDB DIRECTORY STORAGE ENGINE ---
+const IDB_DB_NAME = 'AhmadAluDirectoryDB';
+const IDB_STORE_NAME = 'handles';
+const IDB_KEY_NAME = 'savedFolder';
 
-// --- CSV PROCESSING (FIXED LOGIC) ---
+function getIDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(IDB_DB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(IDB_STORE_NAME);
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function saveDirectoryHandle(handle) {
+  const db = await getIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(IDB_STORE_NAME);
+    const req = store.put(handle, IDB_KEY_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function loadDirectoryHandle() {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE_NAME, 'readonly');
+      const store = tx.objectStore(IDB_STORE_NAME);
+      const req = store.get(IDB_KEY_NAME);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+// Target folder reference storage
+let savedFolderHandle = null;
+
+async function selectAutoSaveFolder() {
+  if (!window.showDirectoryPicker) {
+    alert("This browser doesn't fully support the local File System Access API. Standard downloads will go to your default Downloads folder instead.");
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await saveDirectoryHandle(handle);
+    savedFolderHandle = handle;
+    updateFolderStatusUI(handle.name);
+    alert(`Success! Automatic save folder registered: "${handle.name}". Download PDF actions will save files here.`);
+  } catch (e) {
+    console.error(e);
+    if (e.name === 'SecurityError') {
+      alert("Security Restriction: Browsers block target folder selection inside sandboxed environments (like CodePen/cdpn.io). Please save this code as an HTML file on your computer and open it directly in Chrome or Edge to run the auto-save feature.");
+    } else {
+      alert("Folder selection cancelled or failed.");
+    }
+  }
+}
+
+function updateFolderStatusUI(folderName) {
+  const statusEl = document.getElementById('folderStatus');
+  if (folderName) {
+    statusEl.innerHTML = `Status: Auto-saving to <strong style="color: #2ecc71;">${folderName}</strong>`;
+  } else {
+    statusEl.innerHTML = `Status: Default Downloads folder`;
+  }
+}
+
+async function initFolderSelection() {
+  const handle = await loadDirectoryHandle();
+  if (handle) {
+    savedFolderHandle = handle;
+    updateFolderStatusUI(handle.name);
+  }
+}
+
+async function verifyPermission(fileHandle, readWrite) {
+  const options = {};
+  if (readWrite) {
+    options.mode = 'readwrite';
+  }
+  if ((await fileHandle.queryPermission(options)) === 'granted') {
+    return true;
+  }
+  if ((await fileHandle.requestPermission(options)) === 'granted') {
+    return true;
+  }
+  return false;
+}
+
+// --- CLOUD DATABASE HISTORY DIRECTORY LOADERS ---
+function fetchRecentQuotes() {
+  const listEl = document.getElementById('recentQuotesList');
+  listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">Loading History...</div>';
+  
+  fetch(DB_URL)
+  .then(res => res.json())
+  .then(quotes => {
+    cachedRecentQuotes = quotes;
+    renderRecentQuotes(quotes);
+  })
+  .catch(err => {
+    console.error(err);
+    listEl.innerHTML = '<div style="text-align: center; color: #e74c3c; padding: 10px;">Failed to load history</div>';
+  });
+}
+
+function renderRecentQuotes(quotes) {
+  const listEl = document.getElementById('recentQuotesList');
+  if (!quotes || quotes.length === 0) {
+    listEl.innerHTML = '<div style="text-align: center; color: #888; padding: 10px;">No quotations found</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  quotes.forEach(q => {
+    const div = document.createElement('div');
+    div.style.padding = '8px';
+    div.style.borderBottom = '1px solid #dee2e6';
+    div.style.cursor = 'pointer';
+    div.style.display = 'flex';
+    div.style.justifyContent = 'space-between';
+    div.style.alignItems = 'center';
+    div.className = 'recent-quote-item';
+    
+    const displayTotal = q.total ? parseFloat(q.total).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00';
+    div.innerHTML = `
+      <span><strong>${q.ref}</strong> - ${q.client || 'No Address'}</span>
+      <span style="color:#0f7c5d;font-weight:bold;">AED ${displayTotal}</span>
+    `;
+    div.onclick = () => loadQuoteFromDirectory(q);
+    listEl.appendChild(div);
+  });
+}
+
+function filterRecentQuotes() {
+  const term = document.getElementById('searchQuotes').value.toLowerCase();
+  const filtered = cachedRecentQuotes.filter(q => 
+    (q.ref && q.ref.toLowerCase().includes(term)) || 
+    (q.client && q.client.toLowerCase().includes(term))
+  );
+  renderRecentQuotes(filtered);
+}
+
+function loadQuoteFromDirectory(q) {
+  document.getElementById('quotRef').value = q.ref || '';
+  document.getElementById('clientAddr').value = q.client || '';
+  if (q.itemsJson) {
+    try {
+      const itemsData = JSON.parse(q.itemsJson);
+      deserializeItems(itemsData);
+    } catch(e) {
+      console.error("Could not parse itemsJson", e);
+    }
+  }
+  generateQuotation();
+  alert(`Loaded Quotation: Ref "${q.ref}" for "${q.client || 'No Name'}".`);
+}
+
+function deserializeItems(itemsData) {
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+  itemsData.forEach(item => {
+    const isFixed = item.priceType === 'Fixed';
+    addItem(item.name, item.desc, item.rate || item.price || '', isFixed);
+    const id = itemCount;
+    if (item.sizes) {
+      item.sizes.forEach((sz, idx) => {
+        const s = idx + 1;
+        if (s <= 4) {
+          document.getElementById(`w${s}_${id}`).value = sz.w || '';
+          document.getElementById(`h${s}_${id}`).value = sz.h || '';
+          document.getElementById(`qty${s}_${id}`).value = sz.qty || '';
+        }
+      });
+      document.getElementById('toggle_size_' + id).checked = true;
+      toggleSizeDisplay(id);
+    }
+    calcArea(id);
+  });
+}
+
+// --- CSV PROCESSING ---
 function processLibraryCSV(csvText) {
   const rows = parseCSV(csvText);
   if (rows.length === 0) return {};
@@ -207,7 +413,6 @@ function processLibraryCSV(csvText) {
   const tempLib = {};
   const firstRow = rows[0].map(h => h.toLowerCase().trim());
   
-  // Find indices based on your new header names
   const idxCat = firstRow.findIndex(h => h.includes('category'));
   const idxItem = firstRow.findIndex(h => h.includes('item name') || h === 'item');
   const idxDesc = firstRow.findIndex(h => h.includes('description') || h.includes('details'));
@@ -223,7 +428,6 @@ function processLibraryCSV(csvText) {
     const name = row[idxItem] ? row[idxItem].trim() : "";
     const desc = row[idxDesc] ? row[idxDesc].trim() : "";
     
-    // Safety check: Skip separator rows or rows without names
     if (!name || name.toLowerCase().includes('item name')) continue;
 
     let category = activeCategory;
@@ -257,7 +461,7 @@ function loadSpreadsheetLibrary() {
     parsedLibrary = processLibraryCSV(csvText);
     rebuildFlatItemLibrary();
     populateCategorySelector();
-  });
+  }).catch(e => console.error("Error loading spreadsheet library:", e));
 }
 
 function rebuildFlatItemLibrary() {
@@ -282,29 +486,128 @@ function populateCategorySelector() {
   });
 }
 
+// --- DYNAMIC FORMULA RESOLVER ---
+function evaluateFormula(formulaStr, globalW, globalL, globalH) {
+  let str = formulaStr.toLowerCase().replace(/×/g, '*').trim();
+  
+  let wVal = 0;
+  let hVal = 0;
+  let qtyVal = 1;
+  
+  // Resolve variable mappings from your sheet
+  if (str.includes('length') && str.includes('width')) {
+    wVal = globalL;
+    hVal = globalW;
+  } else if (str.includes('width') && str.includes('height')) {
+    wVal = globalW;
+    hVal = globalH;
+  } else if (str.includes('length') && str.includes('height')) {
+    wVal = globalL;
+    hVal = globalH;
+  } else {
+    wVal = globalL || globalW;
+    hVal = globalH || globalW;
+  }
+  
+  // Extract trailing static multiplier (e.g. * 2 or * 4) to populate the initial Quantity
+  const qtyMatch = str.match(/\*\s*(\d+)/);
+  if (qtyMatch) {
+    qtyVal = parseInt(qtyMatch[1]) || 1;
+  }
+  
+  return { w: wVal, h: hVal, qty: qtyVal };
+}
+
 function onWorkTypeChange(val) {
   if (val === 'Custom') return;
   document.getElementById('subject').value = "Supply & Installation of " + val;
   document.getElementById('itemsContainer').innerHTML = '';
   itemCount = 0;
-  parsedLibrary[val].forEach(item => addItem(item.name, item.desc));
+  
+  const globalW = parseFloat(document.getElementById('globalWidth').value) || 0;
+  const globalL = parseFloat(document.getElementById('globalLength').value) || 0;
+  const globalH = parseFloat(document.getElementById('globalHeight').value) || 0;
+
+  if (!parsedLibrary || !parsedLibrary[val]) {
+    addItem();
+    return;
+  }
+
+  parsedLibrary[val].forEach(item => {
+    // Determine Pricing Type (Fixed price items do not calculate sizes automatically)
+    const isFixed = !item.formula;
+    
+    // Create element prefilled with sheet rates
+    addItem(item.name, item.desc, item.rate, isFixed);
+    const currentId = itemCount;
+    
+    // Evaluate custom formulas dynamically when smart estimator is executed
+    if (hasEstimatorBeenRun && item.formula) {
+      const dims = evaluateFormula(item.formula, globalW, globalL, globalH);
+      if (dims.w > 0 && dims.h > 0) {
+        document.getElementById('toggle_size_' + currentId).checked = true;
+        toggleSizeDisplay(currentId);
+        
+        document.getElementById('w1_' + currentId).value = dims.w;
+        document.getElementById('h1_' + currentId).value = dims.h;
+        document.getElementById('qty1_' + currentId).value = dims.qty;
+      }
+    }
+    
+    calcArea(currentId);
+  });
+  
   generateQuotation();
 }
 
-function addItem(pName = '', pDesc = '') {
+// addItem upgraded to support 4 independent dynamic size rows
+function addItem(pName = '', pDesc = '', pRate = '', pFixed = false) {
   itemCount++; const id = itemCount;
   const div = document.createElement('div'); div.className = 'item-row'; div.id = 'item_' + id;
+  
+  const isFixedSelected = pFixed ? 'selected' : '';
+  const isRateSelected = !pFixed ? 'selected' : '';
+
   div.innerHTML = `
     <h4>Item #${id}</h4><button class="btn-remove" onclick="removeItem(${id})">✕</button>
     <div class="item-grid">
       <div class="full"><label>Item Name</label><input type="text" id="name_${id}" list="itemNamesDatalist" value="${pName}" oninput="onItemNameInput(${id}, this.value)"></div>
       <div class="full"><label>Description</label><textarea id="desc_${id}" rows="2">${pDesc}</textarea></div>
-      <div class="full"><input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})"> <label style="display:inline;">Add Custom Sizes</label></div>
+      <div class="full" style="margin-top: 5px;"><input type="checkbox" id="toggle_size_${id}" onchange="toggleSizeDisplay(${id})"> <label style="display:inline; margin-left: 5px;">Add Custom Sizes</label></div>
+      
+      <!-- Sizes Container restored to handle up to 4 dynamic rows -->
       <div class="full sizes-container" id="sizes_container_${id}">
-        <div class="size-row"><span>#1</span><input type="number" id="w1_${id}" placeholder="W" oninput="calcArea(${id})"><span>×</span><input type="number" id="h1_${id}" placeholder="H" oninput="calcArea(${id})"><span>Qty</span><input type="number" id="qty1_${id}" value="1" oninput="calcArea(${id})"></div>
+        <div class="sizes-title">📐 Custom Sizes (Up to 4 unique measurements)</div>
+        <div class="size-row">
+          <span>#1</span><input type="number" id="w1_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span><input type="number" id="h1_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span><input type="number" id="qty1_${id}" value="1" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#2</span><input type="number" id="w2_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span><input type="number" id="h2_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span><input type="number" id="qty2_${id}" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#3</span><input type="number" id="w3_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span><input type="number" id="h3_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span><input type="number" id="qty3_${id}" oninput="calcArea(${id})">
+        </div>
+        <div class="size-row">
+          <span>#4</span><input type="number" id="w4_${id}" placeholder="W (cm)" oninput="calcArea(${id})">
+          <span>×</span><input type="number" id="h4_${id}" placeholder="H (cm)" oninput="calcArea(${id})">
+          <span>Qty</span><input type="number" id="qty4_${id}" oninput="calcArea(${id})">
+        </div>
       </div>
-      <div><label>Price Type</label><select id="pType_${id}" onchange="calcArea(${id})"><option value="Rate">Per m²</option><option value="Fixed">Fixed</option></select></div>
-      <div><label>Rate (AED)</label><input type="number" id="rate_${id}" oninput="calcArea(${id})"></div>
+      
+      <div style="margin-top: 5px;">
+        <label>Price Type</label>
+        <select id="pType_${id}" onchange="calcArea(${id})">
+          <option value="Rate" ${isRateSelected}>Per m²</option>
+          <option value="Fixed" ${isFixedSelected}>Fixed</option>
+        </select>
+      </div>
+      <div style="margin-top: 5px;"><label>Rate (AED)</label><input type="number" id="rate_${id}" value="${pRate}" oninput="calcArea(${id})"></div>
     </div>
     <div class="calc-result" id="calc_${id}" data-amount="0">Pending info...</div>`;
   document.getElementById('itemsContainer').appendChild(div);
@@ -314,6 +617,8 @@ function onItemNameInput(id, val) {
   if (flatItemLibrary[val]) {
     document.getElementById('desc_' + id).value = flatItemLibrary[val].desc;
     document.getElementById('rate_' + id).value = flatItemLibrary[val].rate;
+    const isFixed = !flatItemLibrary[val].formula;
+    document.getElementById('pType_' + id).value = isFixed ? 'Fixed' : 'Rate';
     calcArea(id);
   }
 }
@@ -326,6 +631,7 @@ function toggleSizeDisplay(id) {
 
 function removeItem(id) { document.getElementById('item_' + id).remove(); generateQuotation(); }
 
+// calcArea dynamically sums and validates up to 4 size rows
 function calcArea(id) {
   const rate = parseFloat(document.getElementById('rate_' + id).value) || 0;
   const pType = document.getElementById('pType_' + id).value;
@@ -333,19 +639,36 @@ function calcArea(id) {
   let totalArea = 0; let totalQty = 0; let sizeTxt = [];
 
   if (sizeOn) {
-    const w = parseFloat(document.getElementById('w1_' + id).value) || 0;
-    const h = parseFloat(document.getElementById('h1_' + id).value) || 0;
-    const q = parseFloat(document.getElementById('qty1_' + id).value) || 1;
-    if (w && h) { totalArea = (w/100)*(h/100)*q; totalQty = q; sizeTxt.push(`${w}x${h}cm (${q})`); }
+    for (let s = 1; s <= 4; s++) {
+      const w = parseFloat(document.getElementById(`w${s}_${id}`).value) || 0;
+      const h = parseFloat(document.getElementById(`h${s}_${id}`).value) || 0;
+      const q = parseFloat(document.getElementById(`qty${s}_${id}`).value) || (s === 1 ? 1 : 0);
+      
+      if (w > 0 && h > 0 && q > 0) {
+        totalArea += (w / 100) * (h / 100) * q;
+        totalQty += q;
+        sizeTxt.push(`${w}×${h}cm (${q})`);
+      }
+    }
   }
 
   let amount = 0;
-  if (pType === 'Fixed') amount = rate;
-  else amount = (totalArea > 0) ? (Math.ceil(totalArea * 2) / 2) * rate : rate;
+  let roundedArea = 0;
+  if (pType === 'Fixed') {
+    amount = rate;
+  } else {
+    if (totalArea > 0) {
+      roundedArea = Math.ceil(totalArea * 2) / 2;
+      amount = roundedArea * rate;
+    } else {
+      amount = rate;
+    }
+  }
 
   const el = document.getElementById('calc_' + id);
   el.dataset.amount = amount;
   el.dataset.sizeText = sizeTxt.join(' | ') || '-';
+  el.dataset.roundedArea = roundedArea > 0 ? roundedArea.toFixed(1) : '';
   el.textContent = "Amount: AED " + amount.toFixed(2);
 }
 
@@ -353,76 +676,468 @@ function getItems() {
   let arr = [];
   document.querySelectorAll('.item-row').forEach(row => {
     const id = row.id.replace('item_', '');
+    const calcEl = document.getElementById('calc_' + id);
     arr.push({
       itemName: document.getElementById('name_' + id).value,
       desc: document.getElementById('desc_' + id).value,
-      size: document.getElementById('calc_' + id).dataset.sizeText,
-      amount: parseFloat(document.getElementById('calc_' + id).dataset.amount) || 0
+      size: calcEl.dataset.sizeText || '-',
+      roundedArea: calcEl.dataset.roundedArea || '',
+      amount: parseFloat(calcEl.dataset.amount) || 0
     });
   });
   return arr;
 }
 
-function generateQuotation() {
-  const items = getItems();
-  const mode = document.getElementById('documentMode').value;
-  const isInvoice = (mode === 'Invoice');
-  const isVat = document.getElementById('vatToggle').value === 'yes';
+// --- DYNAMIC ISOMETRIC 3D DRAWING RENDERER (EXPLICIT DIMENSIONS FOR PDF EXPORTS) ---
+function generateIsometricSVG(w, l, h) {
+  // Safe numeric validation including NaN check to prevent blank renders
+  if (isNaN(w) || isNaN(l) || isNaN(h) || w <= 0 || l <= 0 || h <= 0) {
+    return ''; 
+  }
   
-  let total = items.reduce((s, i) => s + i.amount, 0);
-  let advance = total * 0.6;
-  let activeTotal = isInvoice ? advance : total;
-  let vat = isVat ? activeTotal * 0.05 : 0;
-  let grand = activeTotal + vat;
+  const scale = 110 / Math.max(w, l, h, 100);
+  const angle = 30 * (Math.PI / 180);
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
 
-  const header = `
-    <div style="display:flex; justify-content:space-between; border-bottom:3px solid #c0392b; padding-bottom:10px;">
-      <div style="font-size:20px; font-weight:bold; color:#c0392b;">AHMAD ALUMINIUM & GLASS</div>
-      <div style="font-size:30px; font-weight:bold;">${mode.toUpperCase()}</div>
-    </div>`;
+  // Raw projection offsets prior to bounding box calculation
+  const dxW = -w * scale * cosA;
+  const dyW = w * scale * sinA;
+  const dxL = l * scale * cosA;
+  const dyL = l * scale * sinA;
+  const dyH = -h * scale;
 
-  let rows = '';
-  items.forEach((it, idx) => {
-    rows += `<tr><td>${idx+1}</td><td><b>${it.itemName}</b><br><small>${it.desc}</small></td><td align="center">${it.size}</td><td align="right">${it.amount.toLocaleString()}</td></tr>`;
-  });
+  // Temporary raw coordinate points before centring adjustments
+  const r_p0 = { x: 0, y: 0 };
+  const r_p1 = { x: dxL, y: dyL };
+  const r_p2 = { x: dxL + dxW, y: dyL + dyW };
+  const r_p3 = { x: dxW, y: dyW };
 
-  const doc = `
-    <div class="quotation-page">
-      <div class="watermark-container"><div class="watermark-text">AHMAD ALUMINIUM</div></div>
-      <div style="position:relative; z-index:1;">
-        ${header}
-        <div class="client-meta-grid" style="margin-top:20px;">
-          <div><b>To:</b> ${document.getElementById('clientAddr').value}<br><b>Phone:</b> ${document.getElementById('clientPhone').value}</div>
-          <div align="right"><b>Ref:</b> ${document.getElementById('quotRef').value}<br><b>Date:</b> ${new Date().toLocaleDateString()}</div>
-        </div>
-        <div style="background:#c0392b; color:white; padding:5px; text-align:center; font-weight:bold; margin:15px 0;">Subject: ${document.getElementById('subject').value}</div>
-        <table border="1">
-          <thead><tr><th>#</th><th>Particulars</th><th>Size</th><th>Total (AED)</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div align="right" style="font-size:14px; font-weight:bold;">
-          ${isInvoice ? 'Advance (60%): AED '+advance.toLocaleString()+'<br>' : ''}
-          ${isVat ? 'VAT (5%): AED '+vat.toLocaleString()+'<br>' : ''}
-          Grand Total: AED ${grand.toLocaleString()}
-        </div>
-        <div class="amount-words" style="margin-top:10px;">Total in Words: ${numberToWords(grand)}</div>
-        <div class="doc-section-title">Terms & Conditions</div>
-        <ul class="doc-list">${DEFAULT_TERMS.split('\n').map(t => '<li>'+t.replace('• ','')+'</li>').join('')}</ul>
-        <div style="margin-top:50px; display:flex; justify-content:space-between;">
-          <div style="border-top:1px solid #000; width:150px; text-align:center;">Client Sign</div>
-          <div style="border-top:1px solid #000; width:150px; text-align:center;">Ahmad Aluminium</div>
-        </div>
+  const r_t0 = { x: r_p0.x, y: r_p0.y + dyH };
+  const r_t1 = { x: r_p1.x, y: r_p1.y + dyH };
+  const r_t2 = { x: r_p2.x, y: r_p2.y + dyH };
+  const r_t3 = { x: r_p3.x, y: r_p3.y + dyH };
+
+  // Determine global bounding box limits across all 8 vertices
+  const allX = [r_p0.x, r_p1.x, r_p2.x, r_p3.x, r_t0.x, r_t1.x, r_t2.x, r_t3.x];
+  const allY = [r_p0.y, r_p1.y, r_p2.y, r_p3.y, r_t0.y, r_t1.y, r_t2.y, r_t3.y];
+
+  const minX = Math.min(...allX);
+  const maxX = Math.max(...allX);
+  const minY = Math.min(...allY);
+  const maxY = Math.max(...allY);
+
+  const boxW = maxX - minX;
+  const boxH = maxY - minY;
+
+  // Translate vectors dynamically to render centered horizontally and vertically
+  const shiftX = 225 - (minX + boxW / 2);
+  const shiftY = 125 - (minY + boxH / 2);
+
+  const p0 = { x: r_p0.x + shiftX, y: r_p0.y + shiftY };
+  const p1 = { x: r_p1.x + shiftX, y: r_p1.y + shiftY };
+  const p2 = { x: r_p2.x + shiftX, y: r_p2.y + shiftY };
+  const p3 = { x: r_p3.x + shiftX, y: r_p3.y + shiftY };
+
+  const t0 = { x: r_t0.x + shiftX, y: r_t0.y + shiftY };
+  const t1 = { x: r_t1.x + shiftX, y: r_t1.y + shiftY };
+  const t2 = { x: r_t2.x + shiftX, y: r_t2.y + shiftY };
+  const t3 = { x: r_t3.x + shiftX, y: r_t3.y + shiftY };
+
+  const offset = 22;
+  const wlStart = { x: p0.x - scale * cosA * offset, y: p0.y + scale * sinA * offset + 5 };
+  const wlEnd = { x: p3.x - scale * cosA * offset, y: p3.y + scale * sinA * offset + 5 };
+  const llStart = { x: p0.x + scale * cosA * offset, y: p0.y + scale * sinA * offset + 5 };
+  const llEnd = { x: p1.x + scale * cosA * offset, y: p1.y + scale * sinA * offset + 5 };
+  const hlStart = { x: p1.x + 25, y: p1.y };
+  const hlEnd = { x: t1.x + 25, y: t1.y };
+
+  // Return centered rendering diagram block with explicit width and height rules
+  return `
+    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 20px; width: 100%; page-break-inside: avoid; break-inside: avoid;">
+      <div style="font-size: 11px; font-weight: bold; color: #c0392b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; width: 100%; text-align: center;">📐 Structure Schematic (Isometric 3D)</div>
+      <div style="width: 100%; display: flex; justify-content: center; align-items: center; background: #fdf5f5; border: 1px dashed #e0c0c0; border-radius: 6px; padding: 15px 0;">
+        <svg width="350" height="220" viewBox="0 0 450 280">
+          <polygon points="${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}" fill="rgba(0,0,0,0.01)" stroke="#cccccc" stroke-width="1.5" stroke-dasharray="3,3" />
+          <polygon points="${p0.x},${p0.y} ${p1.x},${p1.y} ${t1.x},${t1.y} ${t0.x},${t0.y}" fill="rgba(41, 128, 185, 0.06)" />
+          <polygon points="${p0.x},${p0.y} ${p3.x},${p3.y} ${t3.x},${t3.y} ${t0.x},${t0.y}" fill="rgba(41, 128, 185, 0.06)" />
+          <line x1="${p0.x}" y1="${p0.y}" x2="${t0.x}" y2="${t0.y}" stroke="#16213e" stroke-width="3" />
+          <line x1="${p1.x}" y1="${p1.y}" x2="${t1.x}" y2="${t1.y}" stroke="#16213e" stroke-width="3" />
+          <line x1="${p2.x}" y1="${p2.y}" x2="${t2.x}" y2="${t2.y}" stroke="#16213e" stroke-width="3" />
+          <line x1="${p3.x}" y1="${p3.y}" x2="${t3.x}" y2="${t3.y}" stroke="#16213e" stroke-width="3" />
+          <polygon points="${t0.x},${t0.y} ${t1.x},${t1.y} ${t2.x},${t2.y} ${t3.x},${t3.y}" fill="rgba(192, 57, 43, 0.08)" stroke="#c0392b" stroke-width="3" />
+          
+          <!-- Width Dim Line -->
+          <line x1="${p0.x}" y1="${p0.y}" x2="${wlStart.x}" y2="${wlStart.y}" stroke="#999999" stroke-width="0.8" />
+          <line x1="${p3.x}" y1="${p3.y}" x2="${wlEnd.x}" y2="${wlEnd.y}" stroke="#999999" stroke-width="0.8" />
+          <line x1="${wlStart.x}" y1="${wlStart.y}" x2="${wlEnd.x}" y2="${wlEnd.y}" stroke="#c0392b" stroke-width="1.5" />
+          <circle cx="${wlStart.x}" cy="${wlStart.y}" r="2" fill="#c0392b" />
+          <circle cx="${wlEnd.x}" cy="${wlEnd.y}" r="2" fill="#c0392b" />
+          <text x="${(wlStart.x + wlEnd.x)/2 - 10}" y="${(wlStart.y + wlEnd.y)/2 + 15}" fill="#c0392b" font-size="10" font-weight="bold" text-anchor="middle">W: ${w} cm</text>
+          
+          <!-- Length Dim Line -->
+          <line x1="${p0.x}" y1="${p0.y}" x2="${llStart.x}" y2="${llStart.y}" stroke="#999999" stroke-width="0.8" />
+          <line x1="${p1.x}" y1="${p1.y}" x2="${llEnd.x}" y2="${llEnd.y}" stroke="#999999" stroke-width="0.8" />
+          <line x1="${llStart.x}" y1="${llStart.y}" x2="${llEnd.x}" y2="${llEnd.y}" stroke="#c0392b" stroke-width="1.5" />
+          <circle cx="${llStart.x}" cy="${llStart.y}" r="2" fill="#c0392b" />
+          <circle cx="${llEnd.x}" cy="${llEnd.y}" r="2" fill="#c0392b" />
+          <text x="${(llStart.x + llEnd.x)/2 + 10}" y="${(llStart.y + llEnd.y)/2 + 15}" fill="#c0392b" font-size="10" font-weight="bold" text-anchor="middle">L: ${l} cm</text>
+          
+          <!-- Height Dim Line -->
+          <line x1="${p1.x}" y1="${p1.y}" x2="${hlStart.x}" y2="${hlStart.y}" stroke="#999999" stroke-width="0.8" />
+          <line x1="${t1.x}" y1="${t1.y}" x2="${hlEnd.x}" y2="${hlEnd.y}" stroke="#999999" stroke-width="0.8" />
+          <line x1="${hlStart.x}" y1="${hlStart.y}" x2="${hlEnd.x}" y2="${hlEnd.y}" stroke="#c0392b" stroke-width="1.5" />
+          <circle cx="${hlStart.x}" cy="${hlStart.y}" r="2" fill="#c0392b" />
+          <circle cx="${hlEnd.x}" cy="${hlEnd.y}" r="2" fill="#c0392b" />
+          <text x="${hlStart.x + 10}" y="${(hlStart.y + hlEnd.y)/2 + 4}" fill="#c0392b" font-size="10" font-weight="bold" text-anchor="start">H: ${h} cm</text>
+        </svg>
       </div>
-    </div>`;
-  document.getElementById('quotationDoc').innerHTML = doc;
+    </div>
+  `;
 }
 
-function numberToWords(n) { return n.toLocaleString() + " UAE Dirhams Only"; }
+// --- NUMBER TO WORDS ENGINE ---
+function numberToWords(num) {
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  if (num === 0) return 'Zero';
+  function helper(n) {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+    if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + helper(n%100) : '');
+    if (n < 100000) return helper(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' ' + helper(n%1000) : '');
+    return helper(Math.floor(n/100000)) + ' Lakh' + (n%100000 ? ' ' + helper(n%100000) : '');
+  }
+  const intPart = Math.floor(num);
+  const decPart = Math.round((num - intPart) * 100);
+  let result = helper(intPart) + ' UAE Dirhams';
+  if (decPart > 0) result += ' and ' + helper(decPart) + ' Fils';
+  return result + ' Only';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+}
+
+// --- GENERATE QUOTATION (EXACT HEADERS, WATERMARKS & PAGE 2 DATA) ---
+function generateQuotation() {
+  const ref = document.getElementById('quotRef').value || 'AA-2026-215';
+  const date = formatDate(document.getElementById('quotDate').value);
+  const clientAddr = document.getElementById('clientAddr').value || 'Dubai, UAE';
+  const clientPhone = document.getElementById('clientPhone').value || 'NA';
+  const clientEmail = document.getElementById('clientEmail').value || 'NA';
+  const subject = document.getElementById('subject').value || 'Supply & Installation of Folding Door';
+  const items = getItems();
+
+  if (items.length === 0) { 
+    document.getElementById('quotationDoc').innerHTML = `
+      <div style="text-align:center; color:#999; padding:80px 0;">Fill the form & click Generate Quotation</div>`;
+    return; 
+  }
+
+  const isVat = document.getElementById('vatToggle').value === 'yes';
+  const globalW = parseFloat(document.getElementById('globalWidth').value) || 0;
+  const globalL = parseFloat(document.getElementById('globalLength').value) || 0;
+  const globalH = parseFloat(document.getElementById('globalHeight').value) || 0;
+  
+  let total = items.reduce((s, i) => s + i.amount, 0);
+  let vat = isVat ? total * 0.05 : 0;
+  let grand = total + vat;
+
+  let rows = '';
+  items.forEach((item, idx) => {
+    const particularsCell = item.itemName
+      ? `<span class="item-name">${item.itemName}</span><span class="item-desc">${item.desc}</span>`
+      : `<span class="item-desc">${item.desc}</span>`;
+
+    const sizeCell = item.size ? item.size.split(' | ').join('<br>') : '-';
+    const areaLabel = (item.roundedArea && item.roundedArea !== '0.0')
+      ? `<br><span style="font-size:10px;color:#c0392b;font-weight:bold;">Total Area: ${item.roundedArea} m²</span>`
+      : '';
+
+    rows += `<tr>
+      <td style="text-align:center;font-weight:bold;vertical-align:top;">${idx + 1}</td>
+      <td style="vertical-align:top;">${particularsCell}</td>
+      <td style="text-align:center;font-weight:bold;vertical-align:top;font-size:11px;line-height:1.4;">
+        ${sizeCell}
+        ${areaLabel}
+      </td>
+      <td style="text-align:right;font-weight:bold;vertical-align:top;">
+        ${item.amount > 0 ? item.amount.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}
+      </td>
+    </tr>`;
+  });
+
+  // Calculate Tax Row if VAT setting is enabled
+  let vatRow = '';
+  if (isVat) {
+    vatRow = `<tr>
+      <td colspan="2" style="text-align:right;font-weight:bold;font-size:12px;background:#fdf5f5!important;">5% VAT</td>
+      <td></td>
+      <td style="text-align:right;font-weight:bold;background:#fdf5f5!important;color:#c0392b;">${vat.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})} AED</td>
+    </tr>`;
+  }
+
+  const watermarkHTML = `
+    <div class="watermark-container">
+      <div class="watermark-text">AHMAD ALUMINIUM &amp; GLASS</div>
+    </div>`;
+
+  const headerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:3px solid #c0392b;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:15px;">
+        <img src="Ahmad_Aluminium_Logo.png" alt="Ahmad Aluminium Logo" style="height:65px; max-width:280px; object-fit:contain; border-radius:4px;">
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:38px;font-weight:900;color:#c0392b;letter-spacing:5px;text-transform:uppercase;">QUOTATION</div>
+      </div>
+    </div>
+    <div style="background:#fdf5f5;border:1px solid #e0c0c0;padding:7px 14px;display:flex;gap:30px;font-size:12px;margin-bottom:12px;border-radius:4px;align-items:center;">
+      <span>📞 <strong>+971588490784</strong></span>
+      <span>✉️ info@ahmadaluminium.ae</span>
+      <span>🌐 www.ahmadaluminium.ae</span>
+    </div>`;
+
+  // Render Page 1 (With strict column width allocations to maintain consistency across pages)
+  const page1 = `
+  <div class="quotation-page">
+    ${watermarkHTML}
+    <div style="position:relative;z-index:1;">
+      ${headerHTML}
+      <div class="client-meta-grid">
+        <div>
+          <div class="section-label">Client Details</div>
+          <div><strong>Address:</strong> ${clientAddr}</div>
+          <div><strong>Phone:</strong> &nbsp;${clientPhone}</div>
+          <div><strong>Email:</strong> &nbsp;&nbsp;${clientEmail}</div>
+        </div>
+        <div>
+          <div class="section-label">Document Info</div>
+          <div><strong>Reference No:</strong> ${ref}</div>
+          <div><strong>Date:</strong> ${date}</div>
+          <div><strong>EMAIL:</strong> info@ahmadaluminium.ae</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-style:italic;font-weight:bold;font-size:14px;color:#c0392b;border-bottom:2px solid #c0392b;border-top:2px solid #c0392b;padding:8px 0;margin-bottom:15px;">
+        Subject: ${subject}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:8%;text-align:center;">Sr.</th>
+            <th style="width:52%;">Particulars / Description</th>
+            <th style="width:22%;text-align:center;">Size (cm)</th>
+            <th style="width:18%;text-align:right;">Total Amount (AED)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          ${vatRow}
+          <tr class="total-row">
+            <td colspan="2" style="text-align:right;font-weight:bold;font-size:13px;">Grand Total</td>
+            <td style="text-align:center;font-weight:bold;color:#c0392b;">-</td>
+            <td style="text-align:right;">${grand.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})} AED</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="amount-words">Grand Total: <strong>${numberToWords(grand)}.</strong></div>
+      <!-- Centered Isometric structure schematic -->
+      ${generateIsometricSVG(globalW, globalL, globalH)}
+    </div>
+  </div>`;
+
+  const pageBreak = `<div class="page-break-divider">Page 2 Below</div>`;
+
+  // Render Page 2 / Page 3 (Encapsulated in quotation-page-footer to avoid any page splitting)
+  const page2 = `
+  <div class="quotation-page-footer">
+    ${watermarkHTML}
+    <div style="position:relative;z-index:1;">
+      <div style="font-size:11px;color:#999;text-align:right;margin-bottom:12px;">Reference No: ${ref} &nbsp;|&nbsp; Continued</div>
+
+      <div class="doc-section-title">Payment terms:</div>
+      <ul class="doc-list">
+        <li>60% Advance Payment.</li>
+        <li>30% on all material delivery on site before installation.</li>
+        <li>10% after Completion.</li>
+        <li>5% VAT is calculated on final invoices according to official tax policy.</li>
+      </ul>
+      <p style="font-size:12px;margin:8px 0;">(Full balance amount shall be paid after completion of the above said works).</p>
+
+      <div class="doc-section-title" style="margin-top:18px;">Terms &amp; Conditions:</div>
+      <ul class="doc-list">
+        <li>Additional works subject to extra cost and to be agreed prior to start of works.</li>
+        <li>All size mentioned are in CMS / MTRS and is final.</li>
+        <li>Power supply to be provided by the Client.</li>
+        <li>All required approvals to be provided by the client.</li>
+        <li>Validity of This Offer for 07 Days Only.</li>
+      </ul>
+
+      <div style="font-size:12px;margin:18px 0 10px;line-height:1.8;font-weight:bold;">
+        Hope the above Quote is Satisfactory and meets your requirements and await your confirmed LPO.<br>
+        Kindly contact the below personal for any clarifications as required
+      </div>
+
+      <!-- SIGNATURE + STAMP ROW -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:30px;margin-bottom:25px;">
+        <div style="font-size:12px;line-height:2.2;">
+          <div style="font-weight:bold;">Project Manager,</div>
+          <div style="font-weight:bold;font-size:13px;">Ahmad Latif</div>
+          <div>+971 58 84 90 784</div>
+        </div>
+        
+        <!-- COMPANY STAMP (SVG RECREATED EXACTLY) -->
+        <div style="text-align:center; z-index: 10; position: relative;">
+          <svg viewBox="0 0 200 200" width="130" height="130" style="opacity: 0.95; transform: rotate(-10deg); filter: drop-shadow(0px 0px 1px rgba(29, 18, 95, 0.3));">
+            <circle cx="100" cy="100" r="95" fill="none" stroke="#1d125f" stroke-width="3" />
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#1d125f" stroke-width="1" />
+            <circle cx="100" cy="100" r="62" fill="none" stroke="#1d125f" stroke-width="1" />
+            <circle cx="100" cy="100" r="57" fill="none" stroke="#1d125f" stroke-width="2.5" />
+            
+            <path id="topPath" d="M 25,100 A 75,75 0 0,1 175,100" fill="none" stroke="none" />
+            <path id="bottomPath" d="M 175,100 A 75,75 0 0,1 25,100" fill="none" stroke="none" />
+            
+            <text fill="#1d125f" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="8.2" letter-spacing="0.3">
+              <textPath href="#topPath" startOffset="50%" text-anchor="middle">
+                احمد الالمنيوم اند جلاس كونتراكتور ش.ذ.م.م - منطقة حرة
+              </textPath>
+            </text>
+            
+            <text fill="#1d125f" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="7.5" letter-spacing="0.3">
+              <textPath href="#bottomPath" startOffset="50%" text-anchor="middle">
+                AHMAD ALUMINIUM AND GLASS CONTRACTOR L.L.C-FZ
+              </textPath>
+            </text>
+            
+            <text x="20" y="104" fill="#1d125f" font-size="12" font-weight="bold">★</text>
+            <text x="169" y="104" fill="#1d125f" font-size="12" font-weight="bold">★</text>
+            
+            <text x="100" y="108" fill="#1d125f" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="13" text-anchor="middle" letter-spacing="0.5">
+              DUBAI - U.A.E
+            </text>
+          </svg>
+        </div>
+
+        <!-- SIGNATURE -->
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#666;margin-bottom:6px;">Signature:</div>
+          <div style="font-family:cursive;font-size:28px;color:#222;border-bottom:1px solid #444;padding:0 20px 4px;display:inline-block;">Ahmad</div>
+        </div>
+      </div>
+
+      <!-- BANK DETAILS -->
+      <div style="border-top:2px solid #c0392b;padding-top:15px;">
+        <h3 style="color:#c0392b;font-size:14px;font-weight:bold;text-align:center;margin-bottom:12px;text-transform:uppercase;letter-spacing:2px;">Company Bank Account Details</h3>
+        <div class="bank-grid-vertical">
+          <div class="bank-card">
+            <div>
+              <strong>1) Company Account — Mashreq Bank</strong>
+              Account Title: Ahmad Aluminium and Glass Contractor LLC FZ<br>
+              <small style="color:#666;">Account No: 019 1021 34817 &nbsp;|&nbsp; Swift Code: BOMLAEAD</small>
+            </div>
+            <div class="bank-iban">IBAN: AE36 0330 0000 1910 2134 817</div>
+          </div>
+          <div class="bank-card">
+            <div>
+              <strong>2) CEO Account — Emirates NBD</strong>
+              Account Title: Ahmad Latif<br>
+              <small style="color:#666;">Account No: 10 1580 3625 901 &nbsp;|&nbsp; Swift Code: EBILAEAD</small>
+            </div>
+            <div class="bank-iban">IBAN: AE28 0260 0010 1580 3625 901</div>
+          </div>
+          <div class="bank-card">
+            <div>
+              <strong>3) Company Account — Mashreq Bank</strong>
+              Account Title: Ahmad Latif<br>
+              <small style="color:#666;">Account No: 019 1009 20602 &nbsp;|&nbsp; Swift Code: BOMLAEAD</small>
+            </div>
+            <div class="bank-iban">IBAN: AE72 0330 0000 1910 0920 602</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('quotationDoc').innerHTML = page1 + pageBreak + page2;
+}
+
+// --- AUTOMATIC SEQUENCE PDF SAVER ---
+async function downloadPDF() {
+  const ref = document.getElementById('quotRef').value || 'AA-2026-215';
+  const element = document.getElementById('quotationDoc');
+  
+  if (!element || element.innerHTML.includes('Fill form & Generate')) {
+    alert("Please generate the quotation first.");
+    return;
+  }
+
+  // Hide page break dividers from the PDF compiler output
+  const dividers = element.querySelectorAll('.page-break-divider');
+  dividers.forEach(d => d.style.display = 'none');
+
+  const opt = {
+    margin:       0,
+    filename:     `${ref}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true, logging: false },
+    jsPDF:        { unit: 'pt', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    // If user previously chose a folder, execute automatic direct save
+    if (savedFolderHandle) {
+      const hasPermission = await verifyPermission(savedFolderHandle, true);
+      if (hasPermission) {
+        // Compile to raw binary PDF Blob
+        const blob = await html2pdf().set(opt).from(element).output('blob');
+        
+        // Save file programmatically inside the chosen directory with ref filename
+        const fileHandle = await savedFolderHandle.getFileHandle(`${ref}.pdf`, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        
+        alert(`Successfully auto-saved to folder as: "${ref}.pdf"`);
+        
+        // Sequence reference increment ONLY upon successful save/download
+        incrementReferenceNumber();
+        
+        // Restore dividers to active view
+        dividers.forEach(d => d.style.display = 'block');
+        return;
+      }
+    }
+  } catch (err) {
+    console.error("Auto-save folder writing failed, falling back to browser download:", err);
+  }
+
+  // Fallback: Standard browser Downloads folder trigger
+  html2pdf().set(opt).from(element).save().then(() => {
+    // Sequence reference increment ONLY upon successful save/download
+    incrementReferenceNumber();
+    
+    // Restore dividers to active view
+    dividers.forEach(d => d.style.display = 'block');
+  });
+}
+
+function incrementReferenceNumber() {
+  const refVal = document.getElementById('quotRef').value;
+  const numPart = refVal.match(/\d+$/);
+  if (numPart) {
+    const usedNum = parseInt(numPart[0]);
+    localStorage.setItem('nextQuotNum', usedNum + 1);
+    document.getElementById('quotRef').value = "AA-" + currentYear + "-" + (usedNum + 1);
+  }
+}
 
 function applySmartEstimator() {
   hasEstimatorBeenRun = true;
   const cat = document.getElementById('workTypeSelector').value;
   onWorkTypeChange(cat === 'Custom' ? 'Glass Room' : cat);
+  hasEstimatorBeenRun = false; // Reset so manual dropdown selections do not evaluate dimensions
 }
 
 function triggerSilentCloudSave() {
@@ -434,6 +1149,9 @@ function triggerSilentCloudSave() {
   };
   fetch(DB_URL, { method: "POST", body: JSON.stringify(data) }).then(() => {
     document.getElementById('syncStatus').textContent = "☁️ Synced";
+  }).catch(e => {
+    document.getElementById('syncStatus').textContent = "☁️ Sync Error";
+    console.error(e);
   });
 }
 
@@ -443,11 +1161,35 @@ function shareToWhatsApp() {
   window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
 }
 
-function downloadPDF() { window.print(); }
+function clearDraft() {
+  if (confirm("Reset current draft?")) {
+    document.getElementById('clientAddr').value = '';
+    document.getElementById('clientPhone').value = '';
+    document.getElementById('clientEmail').value = '';
+    document.getElementById('subject').value = '';
+    document.getElementById('itemsContainer').innerHTML = '';
+    addItem();
+    generateQuotation();
+  }
+}
 
 window.onload = () => {
-  document.getElementById('quotDate').valueAsDate = new Date();
+  // Initialize dynamic Ref values safely inside onload to avoid null pointer issues
+  let currentYear = new Date().getFullYear();
+  let currentSavedRef = localStorage.getItem('nextQuotNum') || 215;
+  const quotRefEl = document.getElementById('quotRef');
+  if (quotRefEl) {
+    quotRefEl.value = "AA-" + currentYear + "-" + currentSavedRef;
+  }
+
+  const dateEl = document.getElementById('quotDate');
+  if (dateEl) {
+    dateEl.valueAsDate = new Date();
+  }
+
   loadSpreadsheetLibrary();
+  initFolderSelection(); // Retrieve saved directory handle if active
+  fetchRecentQuotes();   // Start history directory loading on startup
   addItem();
 };
 </script>
